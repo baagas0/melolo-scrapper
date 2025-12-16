@@ -1,112 +1,109 @@
-# Melolo Scraper
+# Melolo Scrapper
 
-Scraper untuk download video dari Melolo API menggunakan Node.js.
+Scraper untuk download video dari Melolo API dengan PostgreSQL database.
 
-## Fitur
+## Prerequisites
 
-- ✅ Scrape series dan episode dari Melolo API
-- ✅ Download video ke folder `video/{movie_name}/episode_{index}.mp4`
-- ✅ Mencegah duplicate episode menggunakan database SQLite
-- ✅ Database schema sesuai spesifikasi (tables: series, episodes)
+- Node.js (v18 atau lebih baru)
+- PostgreSQL (v12 atau lebih baru)
 
-## Instalasi
+## Installation
 
+1. Install dependencies:
 ```bash
-npm install
+yarn install
 ```
 
-## Setup Database
-
-Jalankan migration untuk membuat database dan tables:
-
+2. Setup database PostgreSQL:
 ```bash
-npm run migrate
+# Login ke PostgreSQL
+psql -U postgres
+
+# Buat database baru
+CREATE DATABASE melolo;
+
+# Keluar dari psql
+\q
 ```
 
-## Penggunaan
-
-### Basic Usage
-
+3. Setup environment variables:
 ```bash
-npm start <series_id>
+# Copy file env.example ke .env
+cp env.example .env
+
+# Edit .env sesuai konfigurasi PostgreSQL Anda
 ```
 
-Contoh:
+4. Jalankan migration:
 ```bash
-npm start 7498275267933113345
+yarn migrate
 ```
 
-### Options
+## Configuration
 
-- `--no-download`: Skip download video (hanya scrape ke database)
-- `--output-dir=DIR`: Tentukan output directory (default: `./video`)
-- `--concurrency=N`: Jumlah concurrent downloads (default: 1)
+Edit file `.env` dengan konfigurasi database Anda:
 
-Contoh:
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=melolo
+DB_USER=postgres
+DB_PASSWORD=postgres
+```
+
+## Usage
+
+Scrape dan download series:
 ```bash
-npm start 7498275267933113345 --output-dir=./videos --concurrency=2
+yarn start <series_id>
+```
+
+Options:
+- `--no-download` - Skip video download
+- `--output-dir=DIR` - Output directory (default: ./video)
+- `--concurrency=N` - Number of concurrent downloads (default: 1)
+
+Example:
+```bash
+yarn start 7498275267933113345
+yarn start 7498275267933113345 --output-dir=./videos --concurrency=2
 ```
 
 ## Database Schema
 
-### Table: series
-- `id` - Primary key
-- `melolo_series_id` - ID dari Melolo API (unique)
+### Series Table
+- `id` - Primary key (auto increment)
+- `melolo_series_id` - Unique series ID dari Melolo
 - `cover_url` - URL cover image
 - `intro` - Deskripsi series
 - `title` - Judul series
 - `episode_count` - Jumlah episode
-- `created_at` - Timestamp
-- `updated_at` - Timestamp
+- `created_at` - Timestamp dibuat
+- `updated_at` - Timestamp update terakhir
 
-### Table: episodes
-- `id` - Primary key
+### Episodes Table
+- `id` - Primary key (auto increment)
 - `series_id` - Foreign key ke series
-- `melolo_vid_id` - ID video dari Melolo API (unique)
+- `melolo_vid_id` - Unique video ID dari Melolo
 - `cover` - URL cover episode
 - `title` - Judul episode
-- `index` - Index episode
+- `index_sequence` - Nomor urut episode
 - `duration` - Durasi video (detik)
-- `path` - Path file video yang didownload
+- `path` - Path file video yang sudah didownload
 - `video_height` - Tinggi video
 - `video_weight` - Lebar video
-- `created_at` - Timestamp
-- `updated_at` - Timestamp
+- `created_at` - Timestamp dibuat
+- `updated_at` - Timestamp update terakhir
 
-## Struktur Folder
+## Migration from SQLite
 
-```
-melolo-scrapper/
-├── src/
-│   ├── api/
-│   │   └── client.js          # API client untuk Melolo
-│   ├── db/
-│   │   ├── database.js        # Database connection
-│   │   └── migrate.js         # Database migration
-│   ├── services/
-│   │   ├── scraper.js         # Scraper service
-│   │   └── downloader.js      # Video downloader
-│   └── index.js               # Main entry point
-├── data/
-│   └── melolo.db              # SQLite database (auto-generated)
-├── video/                     # Output folder untuk video (auto-generated)
-│   └── {movie_name}/
-│       └── episode_{index}.mp4
-├── package.json
-└── README.md
-```
+Jika Anda sebelumnya menggunakan SQLite, data perlu dimigrasikan manual ke PostgreSQL. Database schema sudah disesuaikan untuk PostgreSQL.
 
-## Catatan
+## Changes from SQLite
 
-- Scraper menggunakan headers dari Postman collection yang disediakan
-- Video akan disimpan di folder `video/{movie_name}/episode_{index}.mp4`
-- Duplicate episode dicegah dengan mengecek `melolo_vid_id` di database
-- Jika file sudah ada, download akan di-skip
-
-## Troubleshooting
-
-Jika terjadi error saat download, pastikan:
-1. Koneksi internet stabil
-2. Headers API masih valid (mungkin perlu update dari Postman collection)
-3. Video URL masih accessible
-
+- Menggunakan `pg` driver untuk PostgreSQL
+- Query menggunakan parameterized queries dengan `$1, $2, ...` format
+- Semua database operations sekarang async/await
+- `AUTOINCREMENT` diganti dengan `SERIAL`
+- `DATETIME` diganti dengan `TIMESTAMP`
+- `excluded` diganti dengan `EXCLUDED` (uppercase) dalam ON CONFLICT

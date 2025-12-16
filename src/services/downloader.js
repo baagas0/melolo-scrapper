@@ -124,7 +124,7 @@ export async function downloadEpisode(episode, baseDir = './video') {
     if (existsSync(outputPath)) {
       console.log(`File already exists: ${outputPath}, skipping download`);
       // Update database path
-      updateEpisodePath(episodeId, outputPath);
+      await updateEpisodePath(episodeId, outputPath);
       return outputPath;
     }
 
@@ -132,7 +132,7 @@ export async function downloadEpisode(episode, baseDir = './video') {
     await downloadFile(videoUrl, outputPath);
 
     // Update database with path
-    updateEpisodePath(episodeId, outputPath);
+    await updateEpisodePath(episodeId, outputPath);
 
     return outputPath;
   } catch (error) {
@@ -150,7 +150,7 @@ export async function downloadEpisode(episode, baseDir = './video') {
  */
 export async function downloadSeriesEpisodes(seriesId, baseDir = './video', concurrency = 1) {
   const { getEpisodesToDownload } = await import('./scraper.js');
-  const episodes = getEpisodesToDownload(seriesId);
+  const episodes = await getEpisodesToDownload(seriesId);
 
   if (episodes.length === 0) {
     console.log('No episodes to download');

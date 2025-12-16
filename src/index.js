@@ -43,7 +43,7 @@ async function main(seriesId, options = {}) {
       
       console.log(`\nDownloaded ${downloadedPaths.length} videos`);
     } else {
-      const episodesToDownload = getEpisodesToDownload(scrapedData.seriesId);
+      const episodesToDownload = await getEpisodesToDownload(scrapedData.seriesId);
       console.log(`\n${episodesToDownload.length} episodes ready for download`);
     }
 
