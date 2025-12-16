@@ -1,0 +1,29 @@
+read json postman documentation in this project.
+
+help me to build scrapper using nodejs, download video into folder video/{movie_name}/episode_{index}.mp4
+
+prevent duplicate episode.
+
+follow this database schame
+
+table name: series
+- id
+- melolo_series_id
+- cover_url
+- intro
+- title
+- episode_count
+
+table name: episodes
+- id
+- series_id
+- melolo_vid_id
+- cover
+- title
+- index
+- duration
+- path
+- video_height
+- video_weight
+
+you can try to call api base on postman json documentation using curl or anything, so you can trying.

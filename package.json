@@ -1,0 +1,22 @@
+{
+  "name": "melolo-scrapper",
+  "version": "1.0.0",
+  "description": "Scraper untuk download video dari Melolo API",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "migrate": "node src/db/migrate.js"
+  },
+  "keywords": ["scraper", "melolo", "video"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "better-sqlite3": "^9.2.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0"
+  }
+}
+
