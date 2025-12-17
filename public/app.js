@@ -9,6 +9,7 @@ let reconnectInterval = null;
 // State
 let currentBooks = [];
 let queueUpdateInterval = null;
+let uploadScheduleInterval = null;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
@@ -18,9 +19,13 @@ document.addEventListener('DOMContentLoaded', () => {
   loadStats();
   loadBooks();
   loadQueue();
+  loadUploadSchedule();
   
   // Auto-refresh queue every 3 seconds
   queueUpdateInterval = setInterval(loadQueue, 3000);
+  
+  // Auto-refresh upload schedule every 10 seconds
+  uploadScheduleInterval = setInterval(loadUploadSchedule, 10000);
 });
 
 // WebSocket
@@ -172,6 +177,31 @@ function handleWebSocketMessage(message) {
     case 'queue_retry':
       addLog(`Retrying ${data.count} failed downloads`, 'info');
       loadQueue();
+      break;
+    
+    case 'upload_scheduled':
+      addLog(`✓ Scheduled ${data.episodesScheduled} episodes for upload: ${data.seriesTitle}`, 'success');
+      loadUploadSchedule();
+      break;
+    
+    case 'upload_progress':
+      addLog(`Uploading ${data.seriesTitle} Episode ${data.episodeIndex}: ${data.progress}%`, 'info');
+      loadUploadSchedule();
+      break;
+    
+    case 'upload_complete':
+      addLog(`✓ Upload completed: ${data.seriesTitle} Episode ${data.episodeIndex}`, 'success');
+      loadUploadSchedule();
+      break;
+    
+    case 'upload_error':
+      addLog(`✗ Upload failed: ${data.seriesTitle} Episode ${data.episodeIndex} - ${data.error}`, 'error');
+      loadUploadSchedule();
+      break;
+    
+    case 'upload_schedule_removed':
+      addLog(`Removed ${data.count} scheduled uploads`, 'info');
+      loadUploadSchedule();
       break;
     
     default:
@@ -373,6 +403,48 @@ function initForms() {
       addLog(`Error retrying failed: ${error.message}`, 'error');
     }
   });
+
+  // Upload schedule form
+  document.getElementById('schedule-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const seriesId = document.getElementById('schedule-series-id').value;
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Adding to schedule...';
+    
+    showProgress('schedule-result', 'Adding series to upload schedule...');
+    
+    try {
+      const response = await fetch(`${API_URL}/api/upload/schedule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seriesId: parseInt(seriesId) })
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to add to schedule');
+      }
+      
+      showSuccess('schedule-result', result.message);
+      document.getElementById('schedule-series-id').value = '';
+      loadUploadSchedule();
+    } catch (error) {
+      console.error('Schedule error:', error);
+      showError('schedule-result', error.message);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Add to Upload Schedule';
+    }
+  });
+
+  // Refresh upload schedule
+  document.getElementById('refresh-schedule').addEventListener('click', () => {
+    loadUploadSchedule();
+  });
 }
 
 // API Functions
@@ -563,6 +635,154 @@ function updateEpisodeProgress(episodeId, data) {
   }
 }
 
+async function loadUploadSchedule() {
+  try {
+    const response = await fetch(`${API_URL}/api/upload/schedule`);
+    const result = await response.json();
+    
+    if (result.success) {
+      displayUploadSchedule(result.schedule);
+    }
+  } catch (error) {
+    console.error('Error loading upload schedule:', error);
+  }
+}
+
+function displayUploadSchedule(schedule) {
+  // Update stats
+  document.getElementById('upload-total').textContent = schedule.total;
+  document.getElementById('upload-pending').textContent = schedule.pending;
+  document.getElementById('upload-uploading').textContent = schedule.uploading;
+  document.getElementById('upload-completed').textContent = schedule.completed;
+  document.getElementById('upload-failed').textContent = schedule.failed;
+  document.getElementById('upload-skipped').textContent = schedule.skipped;
+  
+  const container = document.getElementById('upload-schedule-container');
+  
+  if (schedule.bySeries.length === 0) {
+    container.innerHTML = '<p class="loading">No series scheduled for upload</p>';
+    return;
+  }
+  
+  let html = '';
+  
+  schedule.bySeries.forEach(series => {
+    const uploading = series.episodes.filter(e => e.status === 'uploading');
+    const pending = series.episodes.filter(e => e.status === 'pending');
+    const completed = series.episodes.filter(e => e.status === 'completed');
+    const failed = series.episodes.filter(e => e.status === 'failed');
+    const skipped = series.episodes.filter(e => e.status === 'skipped');
+    
+    html += `
+      <div class="series-upload-section">
+        <div class="series-upload-header">
+          <h3>${escapeHtml(series.seriesTitle)}</h3>
+          <button class="btn btn-danger btn-small" onclick="removeSeriesSchedule(${series.seriesId})">
+            🗑️ Remove
+          </button>
+        </div>
+        <div class="series-upload-stats">
+          <span class="badge badge-pending">${pending.length} Pending</span>
+          <span class="badge badge-uploading">${uploading.length} Uploading</span>
+          <span class="badge badge-completed">${completed.length} Completed</span>
+          <span class="badge badge-failed">${failed.length} Failed</span>
+          <span class="badge badge-skipped">${skipped.length} Skipped</span>
+        </div>
+    `;
+    
+    // Show uploading episodes
+    if (uploading.length > 0) {
+      html += '<h4 style="margin-top: 15px;">📤 Currently Uploading</h4>';
+      html += '<div class="upload-items">';
+      uploading.forEach(ep => {
+        const scheduledTime = new Date(ep.scheduled_at).toLocaleString();
+        html += `
+          <div class="upload-item uploading">
+            <div class="upload-item-header">
+              <strong>Episode ${ep.index_sequence}</strong>
+              <span class="upload-time">⏰ ${scheduledTime}</span>
+            </div>
+            <div class="upload-item-title">${escapeHtml(ep.episode_title || ep.melolo_vid_id)}</div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: ${ep.upload_progress}%"></div>
+            </div>
+            <div class="upload-item-info">${ep.upload_progress}% uploaded</div>
+          </div>
+        `;
+      });
+      html += '</div>';
+    }
+    
+    // Show next 5 pending episodes
+    if (pending.length > 0) {
+      html += '<h4 style="margin-top: 15px;">⏳ Next Uploads</h4>';
+      html += '<div class="upload-items">';
+      pending.slice(0, 5).forEach(ep => {
+        const scheduledTime = new Date(ep.scheduled_at).toLocaleString();
+        html += `
+          <div class="upload-item pending">
+            <div class="upload-item-header">
+              <strong>Episode ${ep.index_sequence}</strong>
+              <span class="upload-time">⏰ ${scheduledTime}</span>
+            </div>
+            <div class="upload-item-title">${escapeHtml(ep.episode_title || ep.melolo_vid_id)}</div>
+            <div class="upload-item-info">Scheduled for upload</div>
+          </div>
+        `;
+      });
+      if (pending.length > 5) {
+        html += `<p class="more-info">... and ${pending.length - 5} more episodes</p>`;
+      }
+      html += '</div>';
+    }
+    
+    // Show failed episodes
+    if (failed.length > 0) {
+      html += '<h4 style="margin-top: 15px;">❌ Failed Uploads</h4>';
+      html += '<div class="upload-items">';
+      failed.forEach(ep => {
+        html += `
+          <div class="upload-item failed">
+            <div class="upload-item-header">
+              <strong>Episode ${ep.index_sequence}</strong>
+              <span class="retry-badge">Retry ${ep.retry_count}/3</span>
+            </div>
+            <div class="upload-item-title">${escapeHtml(ep.episode_title || ep.melolo_vid_id)}</div>
+            <div class="upload-item-info error-message">${escapeHtml(ep.error_message || 'Unknown error')}</div>
+          </div>
+        `;
+      });
+      html += '</div>';
+    }
+    
+    html += '</div>';
+  });
+  
+  container.innerHTML = html;
+}
+
+async function removeSeriesSchedule(seriesId) {
+  if (!confirm('Remove this series from upload schedule?')) return;
+  
+  try {
+    const response = await fetch(`${API_URL}/api/upload/schedule/${seriesId}`, {
+      method: 'DELETE'
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      addLog(result.message, 'success');
+      loadUploadSchedule();
+    } else {
+      throw new Error(result.message);
+    }
+  } catch (error) {
+    console.error('Error removing schedule:', error);
+    alert(`Failed to remove schedule: ${error.message}`);
+  }
+}
+
 function displayBooks(books) {
   const container = document.getElementById('books-list');
   
@@ -713,4 +933,5 @@ function escapeHtml(text) {
 // Make functions globally available
 window.scrapeBook = scrapeBook;
 window.deleteBook = deleteBook;
+window.removeSeriesSchedule = removeSeriesSchedule;
 

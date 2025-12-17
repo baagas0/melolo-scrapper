@@ -17,6 +17,12 @@ import {
   clearQueue, 
   retryFailed 
 } from './services/downloadQueue.js';
+import {
+  addSeriesToSchedule,
+  getUploadSchedule,
+  removeSeriesFromSchedule
+} from './services/uploader.js';
+import { getScheduler } from './services/uploadScheduler.js';
 import pool from './db/database.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -440,6 +446,115 @@ app.post('/api/download/queue/retry', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/upload/schedule
+ * Add series to upload schedule
+ */
+app.post('/api/upload/schedule', async (req, res) => {
+  try {
+    const { seriesId } = req.body;
+
+    if (!seriesId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Series ID is required'
+      });
+    }
+
+    const result = await addSeriesToSchedule(parseInt(seriesId));
+
+    broadcastMessage({
+      type: 'upload_scheduled',
+      data: result
+    });
+
+    res.json({
+      success: true,
+      message: `Scheduled ${result.episodesScheduled} episodes for upload`,
+      ...result
+    });
+  } catch (error) {
+    console.error('Schedule upload error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+/**
+ * GET /api/upload/schedule
+ * Get upload schedule
+ */
+app.get('/api/upload/schedule', async (req, res) => {
+  try {
+    const { seriesId } = req.query;
+    
+    const schedule = await getUploadSchedule(seriesId ? parseInt(seriesId) : null);
+
+    res.json({
+      success: true,
+      schedule
+    });
+  } catch (error) {
+    console.error('Get upload schedule error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+/**
+ * DELETE /api/upload/schedule/:seriesId
+ * Remove series from upload schedule
+ */
+app.delete('/api/upload/schedule/:seriesId', async (req, res) => {
+  try {
+    const { seriesId } = req.params;
+    
+    const removed = await removeSeriesFromSchedule(parseInt(seriesId));
+
+    broadcastMessage({
+      type: 'upload_schedule_removed',
+      data: { seriesId, count: removed }
+    });
+
+    res.json({
+      success: true,
+      message: `Removed ${removed} scheduled uploads`
+    });
+  } catch (error) {
+    console.error('Remove upload schedule error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+/**
+ * GET /api/upload/scheduler/status
+ * Get scheduler status
+ */
+app.get('/api/upload/scheduler/status', (req, res) => {
+  try {
+    const scheduler = getScheduler();
+    const status = scheduler.getStatus();
+
+    res.json({
+      success: true,
+      status
+    });
+  } catch (error) {
+    console.error('Get scheduler status error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
 // Helper functions
 
 async function processBatchScrape(books, options) {
@@ -541,6 +656,14 @@ const server = app.listen(PORT, () => {
   console.log(`Server running at: http://localhost:${PORT}`);
   console.log(`WebSocket server ready`);
   console.log('='.repeat(60));
+  
+  // Start upload scheduler
+  const scheduler = getScheduler();
+  scheduler.start((message) => {
+    // Broadcast upload progress via WebSocket
+    broadcastMessage(message);
+  });
+  console.log('Upload scheduler started');
 });
 
 // WebSocket server
@@ -570,6 +693,11 @@ wss.on('connection', (ws) => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, closing server...');
+  
+  // Stop scheduler
+  const scheduler = getScheduler();
+  scheduler.stop();
+  
   server.close(() => {
     console.log('Server closed');
     pool.end();

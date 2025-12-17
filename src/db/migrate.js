@@ -125,6 +125,41 @@ async function migrate() {
     `);
     console.log('✓ Download queue indexes created');
 
+    // Create upload_schedule table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS upload_schedule (
+        id SERIAL PRIMARY KEY,
+        series_id INTEGER NOT NULL,
+        episode_id INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        dailymotion_video_id TEXT,
+        upload_progress INTEGER DEFAULT 0,
+        retry_count INTEGER DEFAULT 0,
+        error_message TEXT,
+        scheduled_at TIMESTAMP,
+        started_at TIMESTAMP,
+        completed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (episode_id) REFERENCES episodes(id) ON DELETE CASCADE,
+        FOREIGN KEY (series_id) REFERENCES series(id) ON DELETE CASCADE,
+        UNIQUE(episode_id)
+      )
+    `);
+    console.log('✓ Upload schedule table created');
+
+    // Create indexes for upload_schedule
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_upload_schedule_series_id ON upload_schedule(series_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_upload_schedule_status ON upload_schedule(status)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_upload_schedule_scheduled_at ON upload_schedule(scheduled_at)
+    `);
+    console.log('✓ Upload schedule indexes created');
+
     console.log('\nDatabase migration completed successfully!');
   } catch (error) {
     console.error('Migration error:', error);

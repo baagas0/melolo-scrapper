@@ -1,98 +1,236 @@
-api: https://api31-normal-myb.tmtreader.com/i18n_novel/bookmall/cell/change/v1/?max_abstract_len=0&selected_tag_id=25&selected_tag_type=2&offset=18&is_preload=false&recommend_enable_write_client_session_cache_only=false&preference_strategy=0&session_id=202512101501045C6A9FEBAF21FC38E71A&change_type=0&enable_new_show_mechanism=false&time_zone=Asia%2FJakarta&is_preference_force_insert=false&is_landing_page=0&tab_scene=3&tab_type=0&limit=2&start_offset=0&cell_id=7450059162446200848&os=android&_rticket=1765352187044&current_region=US&app_language=id&sys_language=en&app_region=US&sys_region=US&user_language=id&ui_language=en&
-response: 
-{
-    "code": 0,
-    "data": {
-        "cell": {
-            "algo": 1,
-            "book_page_type": 0,
-            "books": [
-                {
-                    "abstract": "Julia Tjuara salah kira Bobi Jirya, seorang pensiunan militer dari Kota Jiri yang datang ke Kota Gama untuk selidiki Keluarga Sona, sebagai model pria. Bobi jatuh cinta pada Julia dan mengejarnya. Julia yang nggak pernah serius pacaran akhirnya juga jatuh cinta pada Bobi.",
-                    "age_gate": "18",
-                    "author": "xinyu",
-                    "book_id": "7526806226835868733",
-                    "book_name": "Manjain Julia",
-                    "book_status": "1",
-                    "book_type": "2",
-                    "category_info": "[{\"ObjectId\":754,\"Dim\":10,\"Name\":\"Ceo\",\"ExternalDesc\":\"\",\"Gender\":0,\"Status\":1,\"AppId\":4171,\"Extra\":\"{\\\"for_publication\\\":0,\\\"icon\\\":\\\"http://p16-novel-sg.ibyteimg.com/novel-static-sg/81edaf0701d9e369d18c1fe1ae5aff19~tplv-noop.image\\\"}\",\"NameStarlingKey\":\"genrename_drama_Ceo\",\"InExperiment\":false,\"MainCategory\":false,\"ExtraInfo\":\"{\\\"group_id\\\":0,\\\"dim_name\\\":\\\"character\\\"}\",\"OpUser\":\"zhonglirong\",\"CreateTime\":1740652500},{\"ObjectId\":721,\"Dim\":10,\"Name\":\"Serangan balik\",\"ExternalDesc\":\"\",\"Gender\":2,\"Status\":1,\"AppId\":4171,\"Extra\":\"{\\\"for_publication\\\":0,\\\"icon\\\":\\\"http://p16-novel-sg.ibyteimg.com/novel-static-sg/81edaf0701d9e369d18c1fe1ae5aff19~tplv-noop.image\\\"}\",\"NameStarlingKey\":\"genrename_drama_counterattack\",\"InExperiment\":false,\"MainCategory\":true,\"ExtraInfo\":\"{\\\"group_id\\\":0,\\\"dim_name\\\":\\\"trope\\\"}\",\"OpUser\":\"zhonglirong\",\"CreateTime\":1740580028},{\"ObjectId\":2,\"Dim\":10,\"Name\":\"Romansa\",\"ExternalDesc\":\"\",\"Gender\":0,\"Status\":1,\"AppId\":4171,\"Extra\":\"{\\\"for_publication\\\":0,\\\"icon\\\":\\\"http://p16-novel-sg.ibyteimg.com/novel-static-sg/ae4e5a8c44d152662be62f7916567d69~tplv-noop.image\\\",\\\"large_icon\\\":\\\"http://p16-novel-sg.ibyteimg.com/novel-static-sg/beb25ec9b9edae1b8b30c347a7848630~tplv-noop.image\\\",\\\"back_image\\\":\\\"http://p16-novel-sg.ibyteimg.com/novel-static-sg/dc9166b1732abe67dbe1be188e33d7e3~tplv-noop.image\\\"}\",\"NameStarlingKey\":\"genrename_Romance\",\"InExperiment\":false,\"MainCategory\":false,\"ExtraInfo\":\"{\\\"group_id\\\":0,\\\"dim_name\\\":\\\"genre\\\"}\",\"OpUser\":\"\",\"CreateTime\":1607000379},{\"ObjectId\":79,\"Dim\":10,\"Name\":\"Romansa Urban\",\"ExternalDesc\":\"\",\"Gender\":0,\"Status\":1,\"AppId\":4171,\"Extra\":\"{\\\"for_publication\\\":0,\\\"icon\\\":\\\"http://p16-novel-sg.ibyteimg.com/novel-static-sg/fd374feb6fd90a7044f8224b84db3fd7~tplv-noop.image\\\"}\",\"NameStarlingKey\":\"genrename_Modern_love\",\"InExperiment\":false,\"MainCategory\":true,\"ExtraInfo\":\"{\\\"group_id\\\":0,\\\"dim_name\\\":\\\"theme\\\"}\",\"OpUser\":\"\",\"CreateTime\":1640806585},{\"ObjectId\":25,\"Dim\":10,\"Name\":\"Cinta Satu Malam\",\"ExternalDesc\":\"\",\"Gender\":0,\"Status\":1,\"AppId\":4171,\"Extra\":\"{\\\"for_publication\\\":0,\\\"icon\\\":\\\"http://p16-novel-sg.ibyteimg.com/novel-static-sg/bb37e584f54b9cc4a37a2e4683f9f218~tplv-noop.image\\\"}\",\"NameStarlingKey\":\"genrename_One_Night_Stand\",\"InExperiment\":false,\"MainCategory\":false,\"ExtraInfo\":\"{\\\"group_id\\\":0,\\\"dim_name\\\":\\\"trope\\\"}\",\"OpUser\":\"\",\"CreateTime\":1630500206}]",
-                    "category_v2_ids": "79,2,754,721,25",
-                    "color_dominate": "#c0b0a0",
-                    "comic_show_type": "0",
-                    "copyright_info": "",
-                    "cover_stat_infos": [
-                        {
-                            "stat_data_position": 3,
-                            "stat_type": 6,
-                            "stat_value": "1.5M"
-                        },
-                        {
-                            "stat_data_position": 1,
-                            "stat_type": 22,
-                            "stat_value": ""
-                        }
-                    ],
-                    "create_time": "2025-07-14T05:32:18Z",
-                    "creation_status": "0",
-                    "gender": "0",
-                    "genre": "203",
-                    "in_bookshelf": "0",
-                    "is_dubbed": "0",
-                    "is_exclusive": "1",
-                    "is_hot": "0",
-                    "is_native": "0",
-                    "is_new_book": "0",
-                    "language": "id",
-                    "last_chapter_first_pass_time": "1752502235",
-                    "last_chapter_index": "68",
-                    "last_publish_time": "1752502235",
-                    "media_id": "2761680416173381",
-                    "novel_audit_mark_info": "{\"disclaimer\":{\"content_label\":[\"Restricted Behavior Standards\"],\"fictional_warnings\":[],\"show_in_first\":false,\"special_disclaimers\":[],\"trigger_warning\":[\"Adult Image-based Sexual Abuse\"]}}",
-                    "novel_text_type": "0",
-                    "platform": "7",
-                    "read_count": "0",
-                    "region_first_visible_time": "1752581483",
-                    "serial_count": "68",
-                    "show_creation_status": "Selesai",
-                    "show_creation_status_v2": "{\"detail_scene\":[\"Selesai\",\"Status\"],\"other_scene\":\"Selesai\"}",
-                    "source": "鑫屿文化",
-                    "stat_infos": [
-                        "Ceo",
-                        "Selesai"
-                    ],
-                    "sub_abstract": "",
-                    "thumb_url": "https://p16-novel-sign-sg.fizzopic.org/novel-images-sg/b09d2e623b28edc0f9ea2e694e29fb03~tplv-resize:570:810.heic?rk3s=95ec04ee&x-expires=1767571724&x-signature=MIGWXZJBRQmKX7Bzn4QNHOBvpQw%3D",
-                    "total_price": "",
-                    "tts_status": "0",
-                    "type": "0",
-                    "visibility_age_gate": "18",
-                    "web_infos": "{\"stat_infos\":[\"Ceo\"]}",
-                    "word_number": "2040"
-                }
-            ],
-            "cell_style": 4,
-            "cell_type": 13,
-            "channel_id": 94349628309,
-            "cid": "0",
-            "english_name": "Trending",
-            "has_more": true,
-            "id": "7450059162446200848",
-            "main_index": 0,
-            "name": "Trending",
-            "next_num": 18,
-            "next_offset": 36,
-            "operation_type": 1,
-            "show_category_setting": true,
-            "show_type": 302,
-            "url": "worldance645713://lynxview?surl=https%3A%2F%2Fapi.tmtreader.com%2Fworldance%2Flynx%2Ffeoffline%2Fdrama_lynx%2Fplaylet-list%2Ftemplate.js%3Fsession_id%3D202512101501045C6A9FEBAF21FC38E71A%26tab_scene%3D3%26stick_ids%3D7526806226835868733%2C7579521219704130613%2C7555808455508888637%2C7574307240564247557%2C7537934027395697681%2C7566459541378829317%2C7573628637417573429%2C7574680034992983093%2C7464754020821765137%2C7566811247824342017%2C7522723499182394385%2C7540546139280378941%2C7571029145841306629%2C7530535535052327937%2C7563541481214970885%2C7418028697287920656%2C7537142758159420433%2C7397421879427861505%26display_position%3D-1%26cell_id%3D7450059162446200848&use_spark=1&hide_nav_bar=1&trans_status_bar=1&status_font_mode=light&loadingButHideByFront=1&use_forest=1&channel=drama_lynx&bundle=playlet-list/template.js",
-            "use_recommend": true
-        },
-        "has_more": true,
-        "next_offset": 36,
-        "session_id": "202512101501045C6A9FEBAF21FC38E71A"
-    },
-    "log_id": "2025121621083681D212D0D8829A4A63F8",
-    "message": "success"
+import axios, { AxiosInstance } from "axios";
+import { ENV } from "./_core/env";
+
+interface DailymotionTokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  scope: string;
 }
 
-i need interface for search and scrape
+interface DailymotionUploadResponse {
+  upload_token: string;
+  upload_url: string;
+}
+
+interface DailymotionPublishResponse {
+  id: string;
+  title: string;
+  status: string;
+}
+
+/**
+ * Dailymotion API client for handling authentication and video uploads
+ */
+export class DailymotionClient {
+  private apiClient: AxiosInstance;
+  private accessToken: string | null = null;
+  private tokenExpiry: number | null = null;
+  private apiKey: string;
+  private apiSecret: string;
+
+  constructor(apiKey: string, apiSecret: string) {
+    this.apiKey = apiKey;
+    this.apiSecret = apiSecret;
+
+    this.apiClient = axios.create({
+      baseURL: "https://partner.api.dailymotion.com",
+      timeout: 30000,
+    });
+
+    // Add request interceptor to include auth token
+    this.apiClient.interceptors.request.use((config) => {
+      if (this.accessToken) {
+        config.headers.Authorization = `Bearer ${this.accessToken}`;
+      }
+      return config;
+    });
+  }
+
+  /**
+   * Authenticate with Dailymotion API using client credentials flow
+   */
+  async authenticate(): Promise<void> {
+    try {
+      const params = new URLSearchParams();
+      params.append("grant_type", "client_credentials");
+      params.append("client_id", this.apiKey);
+      params.append("client_secret", this.apiSecret);
+      params.append("scope", "manage_videos");
+
+      const response = await axios.post<DailymotionTokenResponse>(
+        "https://partner.api.dailymotion.com/oauth/v1/token",
+        params,
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }
+      );
+
+      this.accessToken = response.data.access_token;
+      // Set expiry to 5 minutes before actual expiry for safety margin
+      const expiresIn = response.data.expires_in || 3600;
+      this.tokenExpiry = Date.now() + (expiresIn - 300) * 1000;
+
+      console.log("[Dailymotion] Authentication successful, token expires in", expiresIn, "seconds");
+    } catch (error) {
+      console.error("[Dailymotion] Authentication failed:", error);
+      throw new Error("Failed to authenticate with Dailymotion API");
+    }
+  }
+
+  /**
+   * Check if the current token is still valid
+   */
+  private isTokenValid(): boolean {
+    return this.accessToken !== null && this.tokenExpiry !== null && Date.now() < this.tokenExpiry;
+  }
+
+  /**
+   * Ensure we have a valid token, refresh if needed
+   */
+  private async ensureValidToken(): Promise<void> {
+    if (!this.isTokenValid()) {
+      await this.authenticate();
+    }
+  }
+
+  /**
+   * Get upload URL for a video file
+   */
+  async getUploadUrl(): Promise<DailymotionUploadResponse> {
+    try {
+      await this.ensureValidToken();
+
+      const response = await this.apiClient.get<DailymotionUploadResponse>("/file/upload");
+
+      return response.data;
+    } catch (error) {
+      console.error("[Dailymotion] Failed to get upload URL:", error);
+      throw new Error("Failed to get upload URL from Dailymotion");
+    }
+  }
+
+  /**
+   * Upload a video file to Dailymotion
+   * @param filePath - Path to the video file to upload
+   * @param uploadUrl - The upload URL obtained from getUploadUrl
+   * @param onProgress - Callback for upload progress
+   */
+  async uploadFile(
+    filePath: string,
+    uploadUrl: string,
+    onProgress?: (progress: number) => void
+  ): Promise<string> {
+    try {
+      const fs = await import("fs");
+      const fileStream = fs.createReadStream(filePath);
+      const fileStats = fs.statSync(filePath);
+      const fileSize = fileStats.size;
+
+      const uploadResponse = await axios.post<{ upload_token: string }>(uploadUrl, fileStream, {
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "Content-Length": fileSize,
+        },
+        onUploadProgress: (progressEvent) => {
+          if (onProgress && progressEvent.total) {
+            const progress = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+            onProgress(progress);
+          }
+        },
+      });
+
+      return uploadResponse.data.upload_token;
+    } catch (error) {
+      console.error("[Dailymotion] File upload failed:", error);
+      throw new Error("Failed to upload file to Dailymotion");
+    }
+  }
+
+  /**
+   * Publish a video with metadata
+   * @param uploadToken - Token received from file upload
+   * @param title - Video title
+   * @param description - Video description
+   */
+  async publishVideo(
+    uploadToken: string,
+    title: string,
+    description?: string
+  ): Promise<DailymotionPublishResponse> {
+    try {
+      await this.ensureValidToken();
+
+      const response = await this.apiClient.post<DailymotionPublishResponse>("/video/create", {
+        upload_token: uploadToken,
+        title,
+        description: description || "",
+        published: true,
+      });
+
+      console.log(`[Dailymotion] Video published successfully: ${response.data.id}`);
+      return response.data;
+    } catch (error) {
+      console.error("[Dailymotion] Video publish failed:", error);
+      throw new Error("Failed to publish video to Dailymotion");
+    }
+  }
+
+  /**
+   * Complete video upload and publish
+   */
+  async uploadAndPublishVideo(
+    filePath: string,
+    title: string,
+    description?: string,
+    onProgress?: (progress: number) => void
+  ): Promise<string> {
+    try {
+      // Get upload URL
+      const uploadUrlData = await this.getUploadUrl();
+
+      // Upload file
+      const uploadToken = await this.uploadFile(filePath, uploadUrlData.upload_url, onProgress);
+
+      // Publish video
+      const publishResponse = await this.publishVideo(uploadToken, title, description);
+
+      return publishResponse.id;
+    } catch (error) {
+      console.error("[Dailymotion] Upload and publish failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reset the client instance (useful for testing)
+   */
+  static reset(): void {
+    dailymotionClient = null;
+  }
+}
+
+/**
+ * Singleton instance
+ */
+let dailymotionClient: DailymotionClient | null = null;
+
+/**
+ * Get or create the Dailymotion client instance
+ */
+export function getDailymotionClient(): DailymotionClient {
+  if (!dailymotionClient) {
+    const apiKey = process.env.DAILYMOTION_API_KEY;
+    const apiSecret = process.env.DAILYMOTION_API_SECRET;
+
+    if (!apiKey || !apiSecret) {
+      throw new Error("DAILYMOTION_API_KEY and DAILYMOTION_API_SECRET environment variables are required");
+    }
+
+    dailymotionClient = new DailymotionClient(apiKey, apiSecret);
+  }
+
+  return dailymotionClient;
+}

@@ -48,6 +48,7 @@
       <button class="tab-button" data-tab="scrape">⚙️ Scrape</button>
       <button class="tab-button" data-tab="batch">🚀 Batch</button>
       <button class="tab-button" data-tab="monitor">📊 Download Monitor</button>
+      <button class="tab-button" data-tab="upload">📤 Upload Schedule</button>
       <button class="tab-button" data-tab="logs">📝 Logs</button>
     </div>
 
@@ -191,6 +192,60 @@
 
       <div id="queue-container" class="queue-container">
         <p class="loading">Loading download queue...</p>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-upload">
+      <h2>📤 Upload Schedule</h2>
+      <p class="info-text">Schedule series untuk auto-upload ke Dailymotion (1 episode per jam). Pastikan semua episode sudah di-download.</p>
+      
+      <div class="form-section">
+        <h3>🎯 Add Series to Schedule</h3>
+        <form id="schedule-form" class="form">
+          <div class="form-group">
+            <label for="schedule-series-id">Series ID</label>
+            <input type="number" id="schedule-series-id" placeholder="Enter series ID" required>
+            <small>Series ID dari database (bisa didapat dari tab Books)</small>
+          </div>
+          <button type="submit" class="btn btn-primary">Add to Upload Schedule</button>
+        </form>
+        <div id="schedule-result" class="results-area" style="margin-top: 15px; min-height: auto;"></div>
+      </div>
+
+      <div class="toolbar" style="margin-top: 30px;">
+        <h3 style="margin: 0;">📋 Scheduled Uploads</h3>
+        <button class="btn btn-secondary" id="refresh-schedule">🔄 Refresh</button>
+      </div>
+
+      <div class="upload-stats">
+        <div class="stat-card">
+          <div class="stat-value" id="upload-total">0</div>
+          <div class="stat-label">Total Episodes</div>
+        </div>
+        <div class="stat-card" style="border-color: var(--warning);">
+          <div class="stat-value" id="upload-pending">0</div>
+          <div class="stat-label">⏳ Pending</div>
+        </div>
+        <div class="stat-card" style="border-color: var(--primary);">
+          <div class="stat-value" id="upload-uploading">0</div>
+          <div class="stat-label">📤 Uploading</div>
+        </div>
+        <div class="stat-card" style="border-color: var(--success);">
+          <div class="stat-value" id="upload-completed">0</div>
+          <div class="stat-label">✅ Completed</div>
+        </div>
+        <div class="stat-card" style="border-color: var(--danger);">
+          <div class="stat-value" id="upload-failed">0</div>
+          <div class="stat-label">❌ Failed</div>
+        </div>
+        <div class="stat-card" style="border-color: var(--gray);">
+          <div class="stat-value" id="upload-skipped">0</div>
+          <div class="stat-label">⏭️ Skipped</div>
+        </div>
+      </div>
+
+      <div id="upload-schedule-container" class="upload-schedule-container">
+        <p class="loading">Loading upload schedule...</p>
       </div>
     </div>
 
