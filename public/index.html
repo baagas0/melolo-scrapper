@@ -47,6 +47,7 @@
       <button class="tab-button" data-tab="books">📚 Books</button>
       <button class="tab-button" data-tab="scrape">⚙️ Scrape</button>
       <button class="tab-button" data-tab="batch">🚀 Batch</button>
+      <button class="tab-button" data-tab="monitor">📊 Download Monitor</button>
       <button class="tab-button" data-tab="logs">📝 Logs</button>
     </div>
 
@@ -155,6 +156,42 @@
         <button type="submit" class="btn btn-primary btn-large">Start Batch Scraping</button>
       </form>
       <div id="batch-progress" class="progress-area"></div>
+    </div>
+
+    <div class="tab-content" id="tab-monitor">
+      <h2>📊 Download Monitor</h2>
+      <div class="toolbar">
+        <button class="btn btn-secondary" id="refresh-queue">🔄 Refresh</button>
+        <button class="btn btn-secondary" id="clear-queue">🗑️ Clear Completed</button>
+        <button class="btn btn-warning" id="retry-failed">⚠️ Retry Failed</button>
+      </div>
+      
+      <div class="monitor-stats">
+        <div class="stat-card">
+          <div class="stat-value" id="queue-total">0</div>
+          <div class="stat-label">Total</div>
+        </div>
+        <div class="stat-card" style="border-color: var(--warning);">
+          <div class="stat-value" id="queue-pending">0</div>
+          <div class="stat-label">⏳ Pending</div>
+        </div>
+        <div class="stat-card" style="border-color: var(--primary);">
+          <div class="stat-value" id="queue-downloading">0</div>
+          <div class="stat-label">⬇️ Downloading</div>
+        </div>
+        <div class="stat-card" style="border-color: var(--success);">
+          <div class="stat-value" id="queue-completed">0</div>
+          <div class="stat-label">✅ Completed</div>
+        </div>
+        <div class="stat-card" style="border-color: var(--danger);">
+          <div class="stat-value" id="queue-failed">0</div>
+          <div class="stat-label">❌ Failed</div>
+        </div>
+      </div>
+
+      <div id="queue-container" class="queue-container">
+        <p class="loading">Loading download queue...</p>
+      </div>
     </div>
 
     <div class="tab-content" id="tab-logs">

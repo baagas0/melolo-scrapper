@@ -92,6 +92,39 @@ async function migrate() {
     `);
     console.log('✓ Books indexes created');
 
+    // Create download_queue table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS download_queue (
+        id SERIAL PRIMARY KEY,
+        episode_id INTEGER NOT NULL,
+        series_id INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        progress INTEGER DEFAULT 0,
+        total_bytes BIGINT DEFAULT 0,
+        downloaded_bytes BIGINT DEFAULT 0,
+        error_message TEXT,
+        started_at TIMESTAMP,
+        completed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (episode_id) REFERENCES episodes(id) ON DELETE CASCADE,
+        FOREIGN KEY (series_id) REFERENCES series(id) ON DELETE CASCADE
+      )
+    `);
+    console.log('✓ Download queue table created');
+
+    // Create indexes for download_queue
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_download_queue_episode_id ON download_queue(episode_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_download_queue_series_id ON download_queue(series_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_download_queue_status ON download_queue(status)
+    `);
+    console.log('✓ Download queue indexes created');
+
     console.log('\nDatabase migration completed successfully!');
   } catch (error) {
     console.error('Migration error:', error);

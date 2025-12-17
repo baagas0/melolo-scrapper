@@ -12,6 +12,11 @@ import {
 } from './services/books.js';
 import { scrapeSeries, getEpisodesToDownload } from './services/scraper.js';
 import { downloadSeriesEpisodes } from './services/downloader.js';
+import { 
+  getQueueStatus, 
+  clearQueue, 
+  retryFailed 
+} from './services/downloadQueue.js';
 import pool from './db/database.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -185,18 +190,37 @@ app.post('/api/scrape', async (req, res) => {
     if (download !== false) {
       broadcastMessage({
         type: 'download_start',
-        data: { episodesCount: scrapedData.episodes.length }
+        data: { 
+          seriesId: scrapedData.seriesId,
+          episodesCount: scrapedData.episodes.length 
+        }
       });
+
+      // Progress callback for WebSocket updates
+      const progressCallback = (episodeId, data) => {
+        broadcastMessage({
+          type: 'download_progress',
+          data: {
+            seriesId: scrapedData.seriesId,
+            episodeId,
+            ...data
+          }
+        });
+      };
 
       downloadedPaths = await downloadSeriesEpisodes(
         scrapedData.seriesId,
         outputDir || './video',
-        concurrency || 1
+        concurrency || 1,
+        progressCallback
       );
 
       broadcastMessage({
         type: 'download_complete',
-        data: { count: downloadedPaths.length }
+        data: { 
+          seriesId: scrapedData.seriesId,
+          count: downloadedPaths.length 
+        }
       });
     }
 
@@ -337,6 +361,85 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/download/queue
+ * Get download queue status
+ */
+app.get('/api/download/queue', async (req, res) => {
+  try {
+    const { seriesId } = req.query;
+    
+    const queueStatus = await getQueueStatus(seriesId ? parseInt(seriesId) : null);
+
+    res.json({
+      success: true,
+      queue: queueStatus
+    });
+  } catch (error) {
+    console.error('Get queue error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+/**
+ * POST /api/download/queue/clear
+ * Clear completed/failed downloads from queue
+ */
+app.post('/api/download/queue/clear', async (req, res) => {
+  try {
+    const { seriesId } = req.body;
+    
+    const cleared = await clearQueue(seriesId || null);
+
+    broadcastMessage({
+      type: 'queue_cleared',
+      data: { count: cleared }
+    });
+
+    res.json({
+      success: true,
+      message: `Cleared ${cleared} items from queue`
+    });
+  } catch (error) {
+    console.error('Clear queue error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+/**
+ * POST /api/download/queue/retry
+ * Retry failed downloads
+ */
+app.post('/api/download/queue/retry', async (req, res) => {
+  try {
+    const { seriesId } = req.body;
+    
+    const retried = await retryFailed(seriesId || null);
+
+    broadcastMessage({
+      type: 'queue_retry',
+      data: { count: retried }
+    });
+
+    res.json({
+      success: true,
+      message: `Reset ${retried} failed downloads to pending`
+    });
+  } catch (error) {
+    console.error('Retry failed error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
 // Helper functions
 
 async function processBatchScrape(books, options) {
@@ -359,10 +462,23 @@ async function processBatchScrape(books, options) {
       const scrapedData = await scrapeSeries(book.book_id);
       
       if (download) {
+        // Progress callback for WebSocket updates
+        const progressCallback = (episodeId, data) => {
+          broadcastMessage({
+            type: 'download_progress',
+            data: {
+              seriesId: scrapedData.seriesId,
+              episodeId,
+              ...data
+            }
+          });
+        };
+
         await downloadSeriesEpisodes(
           scrapedData.seriesId,
           outputDir,
-          concurrency
+          concurrency,
+          progressCallback
         );
       }
 

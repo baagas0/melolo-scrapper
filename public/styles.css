@@ -510,6 +510,107 @@ body {
   line-height: 1.6;
 }
 
+/* Download Monitor */
+.monitor-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.monitor-stats .stat-card {
+  border: 2px solid var(--border);
+}
+
+.queue-container {
+  background: var(--light);
+  padding: 24px;
+  border-radius: 12px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.queue-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.queue-item {
+  background: var(--white);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  transition: all 0.3s;
+}
+
+.queue-item:hover {
+  box-shadow: 0 4px 12px var(--shadow);
+  transform: translateX(4px);
+}
+
+.queue-item.pending {
+  border-left: 4px solid var(--warning);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.queue-item.downloading {
+  border-left: 4px solid var(--primary);
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.queue-item.completed {
+  border-left: 4px solid var(--success);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.queue-item.failed {
+  border-left: 4px solid var(--danger);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.queue-item-header {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--dark);
+  margin-bottom: 6px;
+}
+
+.queue-item-title {
+  font-size: 0.85rem;
+  color: var(--gray);
+  margin-bottom: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-item-info {
+  font-size: 0.8rem;
+  color: var(--gray);
+  font-weight: 500;
+}
+
+.queue-item .progress-bar {
+  height: 6px;
+  margin: 10px 0;
+}
+
+.error-message {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.btn-warning {
+  background: var(--warning);
+  color: var(--white);
+}
+
+.btn-warning:hover {
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   body {
@@ -548,6 +649,19 @@ body {
   .tab-button {
     font-size: 0.9rem;
     padding: 14px 16px;
+  }
+
+  .monitor-stats {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar button {
+    width: 100%;
   }
 }
 

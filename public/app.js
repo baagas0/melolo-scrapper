@@ -8,6 +8,7 @@ let reconnectInterval = null;
 
 // State
 let currentBooks = [];
+let queueUpdateInterval = null;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
@@ -16,6 +17,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initWebSocket();
   loadStats();
   loadBooks();
+  loadQueue();
+  
+  // Auto-refresh queue every 3 seconds
+  queueUpdateInterval = setInterval(loadQueue, 3000);
 });
 
 // WebSocket
@@ -107,10 +112,17 @@ function handleWebSocketMessage(message) {
     
     case 'download_start':
       addLog(`Starting download of ${data.episodesCount} episodes...`, 'info');
+      loadQueue(); // Refresh queue when download starts
+      break;
+    
+    case 'download_progress':
+      // Update specific episode progress in queue
+      updateEpisodeProgress(data.episodeId, data);
       break;
     
     case 'download_complete':
       addLog(`Downloaded ${data.count} episodes`, 'success');
+      loadQueue(); // Refresh queue when download completes
       break;
     
     case 'scrape_complete':
@@ -118,6 +130,7 @@ function handleWebSocketMessage(message) {
       showSuccess('scrape-progress', `Successfully scraped ${data.episodesCount} episodes, downloaded ${data.downloadedCount} videos`);
       loadStats();
       loadBooks();
+      loadQueue();
       break;
     
     case 'scrape_error':
@@ -148,6 +161,17 @@ function handleWebSocketMessage(message) {
       showSuccess('batch-progress', `Batch complete! Processed: ${data.processed}, Failed: ${data.failed}`);
       loadStats();
       loadBooks();
+      loadQueue();
+      break;
+    
+    case 'queue_cleared':
+      addLog(`Queue cleared: ${data.count} items removed`, 'info');
+      loadQueue();
+      break;
+    
+    case 'queue_retry':
+      addLog(`Retrying ${data.count} failed downloads`, 'info');
+      loadQueue();
       break;
     
     default:
@@ -306,6 +330,49 @@ function initForms() {
   document.getElementById('clear-logs').addEventListener('click', () => {
     document.getElementById('logs-container').innerHTML = '<p class="log-entry log-info">Logs cleared</p>';
   });
+
+  // Queue management buttons
+  document.getElementById('refresh-queue').addEventListener('click', () => {
+    loadQueue();
+  });
+
+  document.getElementById('clear-queue').addEventListener('click', async () => {
+    if (!confirm('Clear all completed and failed downloads from queue?')) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/api/download/queue/clear`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        addLog(result.message, 'success');
+      }
+    } catch (error) {
+      console.error('Error clearing queue:', error);
+      addLog(`Error clearing queue: ${error.message}`, 'error');
+    }
+  });
+
+  document.getElementById('retry-failed').addEventListener('click', async () => {
+    if (!confirm('Retry all failed downloads?')) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/api/download/queue/retry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        addLog(result.message, 'success');
+      }
+    } catch (error) {
+      console.error('Error retrying failed:', error);
+      addLog(`Error retrying failed: ${error.message}`, 'error');
+    }
+  });
 }
 
 // API Functions
@@ -348,6 +415,151 @@ async function loadBooks(scrapedOnly = false) {
   } catch (error) {
     console.error('Error loading books:', error);
     container.innerHTML = `<p class="loading" style="color: var(--danger);">Error loading books: ${error.message}</p>`;
+  }
+}
+
+async function loadQueue() {
+  try {
+    const response = await fetch(`${API_URL}/api/download/queue`);
+    const result = await response.json();
+    
+    if (result.success) {
+      displayQueue(result.queue);
+    }
+  } catch (error) {
+    console.error('Error loading queue:', error);
+  }
+}
+
+function displayQueue(queue) {
+  // Update stats
+  document.getElementById('queue-total').textContent = queue.total;
+  document.getElementById('queue-pending').textContent = queue.pending;
+  document.getElementById('queue-downloading').textContent = queue.downloading;
+  document.getElementById('queue-completed').textContent = queue.completed;
+  document.getElementById('queue-failed').textContent = queue.failed;
+  
+  const container = document.getElementById('queue-container');
+  
+  if (queue.items.length === 0) {
+    container.innerHTML = '<p class="loading">No downloads in queue</p>';
+    return;
+  }
+  
+  // Group by status
+  const pending = queue.items.filter(i => i.status === 'pending');
+  const downloading = queue.items.filter(i => i.status === 'downloading');
+  const completed = queue.items.filter(i => i.status === 'completed');
+  const failed = queue.items.filter(i => i.status === 'failed');
+  
+  let html = '';
+  
+  if (downloading.length > 0) {
+    html += '<h3 style="margin-top: 20px;">⬇️ Currently Downloading</h3>';
+    html += '<div class="queue-items">';
+    downloading.forEach(item => {
+      const progress = item.progress || 0;
+      const mbDownloaded = (item.downloaded_bytes / 1024 / 1024).toFixed(2);
+      const mbTotal = item.total_bytes > 0 ? (item.total_bytes / 1024 / 1024).toFixed(2) : '?';
+      
+      html += `
+        <div class="queue-item downloading" data-episode-id="${item.episode_id}">
+          <div class="queue-item-header">
+            <strong>${escapeHtml(item.series_title)}</strong> - Episode ${item.index_sequence}
+          </div>
+          <div class="queue-item-title">${escapeHtml(item.episode_title || item.melolo_vid_id)}</div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: ${progress}%"></div>
+          </div>
+          <div class="queue-item-info">
+            ${progress}% - ${mbDownloaded} MB / ${mbTotal} MB
+          </div>
+        </div>
+      `;
+    });
+    html += '</div>';
+  }
+  
+  if (pending.length > 0) {
+    html += '<h3 style="margin-top: 20px;">⏳ Pending Downloads</h3>';
+    html += '<div class="queue-items">';
+    pending.forEach(item => {
+      html += `
+        <div class="queue-item pending">
+          <div class="queue-item-header">
+            <strong>${escapeHtml(item.series_title)}</strong> - Episode ${item.index_sequence}
+          </div>
+          <div class="queue-item-title">${escapeHtml(item.episode_title || item.melolo_vid_id)}</div>
+          <div class="queue-item-info">Waiting to download...</div>
+        </div>
+      `;
+    });
+    html += '</div>';
+  }
+  
+  if (completed.length > 0) {
+    html += '<h3 style="margin-top: 20px;">✅ Completed (showing last 10)</h3>';
+    html += '<div class="queue-items">';
+    completed.slice(0, 10).forEach(item => {
+      html += `
+        <div class="queue-item completed">
+          <div class="queue-item-header">
+            <strong>${escapeHtml(item.series_title)}</strong> - Episode ${item.index_sequence}
+          </div>
+          <div class="queue-item-title">${escapeHtml(item.episode_title || item.melolo_vid_id)}</div>
+          <div class="queue-item-info">✓ Downloaded successfully</div>
+        </div>
+      `;
+    });
+    html += '</div>';
+  }
+  
+  if (failed.length > 0) {
+    html += '<h3 style="margin-top: 20px;">❌ Failed Downloads</h3>';
+    html += '<div class="queue-items">';
+    failed.forEach(item => {
+      html += `
+        <div class="queue-item failed">
+          <div class="queue-item-header">
+            <strong>${escapeHtml(item.series_title)}</strong> - Episode ${item.index_sequence}
+          </div>
+          <div class="queue-item-title">${escapeHtml(item.episode_title || item.melolo_vid_id)}</div>
+          <div class="queue-item-info error-message">
+            ✗ ${escapeHtml(item.error_message || 'Unknown error')}
+          </div>
+        </div>
+      `;
+    });
+    html += '</div>';
+  }
+  
+  container.innerHTML = html;
+}
+
+function updateEpisodeProgress(episodeId, data) {
+  const item = document.querySelector(`.queue-item[data-episode-id="${episodeId}"]`);
+  if (!item) return;
+  
+  if (data.progress !== undefined) {
+    const progressBar = item.querySelector('.progress-fill');
+    if (progressBar) {
+      progressBar.style.width = `${data.progress}%`;
+    }
+    
+    const info = item.querySelector('.queue-item-info');
+    if (info && data.downloadedBytes && data.totalBytes) {
+      const mbDownloaded = (data.downloadedBytes / 1024 / 1024).toFixed(2);
+      const mbTotal = (data.totalBytes / 1024 / 1024).toFixed(2);
+      info.textContent = `${data.progress}% - ${mbDownloaded} MB / ${mbTotal} MB`;
+    }
+  }
+  
+  if (data.status === 'completed') {
+    item.classList.remove('downloading');
+    item.classList.add('completed');
+  } else if (data.status === 'failed') {
+    item.classList.remove('downloading');
+    item.classList.add('failed');
   }
 }
 
