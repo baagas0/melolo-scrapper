@@ -48,7 +48,7 @@ class DailymotionClient {
 			formData.append('grant_type', 'client_credentials');
 			formData.append('client_id', this.apiKey);
 			formData.append('client_secret', this.apiSecret);
-			formData.append('scope', 'manage_videos');
+			formData.append('scopes', 'manage_videos manage_players manage_playlists manage_subtitles email userinfo');
 			formData.append('Content-Type', 'application/x-www-form-urlencoded');
 
       const response = await axios.post(
@@ -155,11 +155,14 @@ class DailymotionClient {
 
       console.log("[Dailymotion] Publishing video with URL:", uploadUrl);
 
-      const response = await this.apiClient.post("/rest/video/create", {
+      const response = await this.apiClient.post("/rest/user/x45xa68/videos", {
         url: uploadUrl,
         title,
         description: description || "",
         published: true,
+				channel: 'shortfilms',
+				is_created_for_kids: false,
+				hashtags: "#fyp"
       });
 
       console.log(`[Dailymotion] Video published successfully: ${response.data.id}`);
