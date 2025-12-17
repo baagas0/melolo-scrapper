@@ -20,7 +20,10 @@ import {
 import {
   addSeriesToSchedule,
   getUploadSchedule,
-  removeSeriesFromSchedule
+  removeSeriesFromSchedule,
+  testDailymotionConnection,
+  testUploadEpisode,
+  getEpisodeForTest
 } from './services/uploader.js';
 import { getScheduler } from './services/uploadScheduler.js';
 import pool from './db/database.js';
@@ -548,6 +551,117 @@ app.get('/api/upload/scheduler/status', (req, res) => {
     });
   } catch (error) {
     console.error('Get scheduler status error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+/**
+ * GET /api/upload/test/connection
+ * Test Dailymotion API connection
+ */
+app.get('/api/upload/test/connection', async (req, res) => {
+  try {
+    const result = await testDailymotionConnection();
+
+    res.json(result);
+  } catch (error) {
+    console.error('Test connection error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+/**
+ * POST /api/upload/test/episode
+ * Test upload a single episode
+ */
+app.post('/api/upload/test/episode', async (req, res) => {
+  try {
+    const { episodeId } = req.body;
+
+    if (!episodeId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Episode ID is required'
+      });
+    }
+
+    // Start async upload
+    testUploadEpisode(parseInt(episodeId), (episodeId, progress, videoId) => {
+      // Broadcast progress via WebSocket
+      broadcastMessage({
+        type: 'test_upload_progress',
+        data: {
+          episodeId,
+          progress,
+          videoId
+        }
+      });
+    }).then(result => {
+      broadcastMessage({
+        type: 'test_upload_complete',
+        data: result
+      });
+    }).catch(error => {
+      broadcastMessage({
+        type: 'test_upload_error',
+        data: {
+          message: error.message
+        }
+      });
+    });
+
+    res.json({
+      success: true,
+      message: 'Test upload started. Check progress via WebSocket.'
+    });
+  } catch (error) {
+    console.error('Test upload error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+/**
+ * GET /api/upload/test/episode-info
+ * Get episode info for test
+ */
+app.get('/api/upload/test/episode-info', async (req, res) => {
+  try {
+    const { seriesId, episodeIndex } = req.query;
+
+    if (!seriesId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Series ID is required'
+      });
+    }
+
+    const episode = await getEpisodeForTest(
+      parseInt(seriesId), 
+      episodeIndex ? parseInt(episodeIndex) : 1
+    );
+
+    if (!episode) {
+      return res.status(404).json({
+        success: false,
+        message: 'Episode not found or not downloaded yet'
+      });
+    }
+
+    res.json({
+      success: true,
+      episode
+    });
+  } catch (error) {
+    console.error('Get episode info error:', error);
     res.status(500).json({ 
       success: false,
       message: error.message 

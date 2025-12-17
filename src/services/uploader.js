@@ -19,6 +19,7 @@ class DailymotionClient {
 
     // Add request interceptor to include auth token
     this.apiClient.interceptors.request.use((config) => {
+        console.log('===> INTERCEPTOR uploader.js:23 ~ this.accessToken', this.accessToken);
       if (this.accessToken) {
         config.headers.Authorization = `Bearer ${this.accessToken}`;
       }
@@ -82,7 +83,7 @@ class DailymotionClient {
     try {
       await this.ensureValidToken();
 
-      const response = await this.apiClient.get('/file/upload');
+      const response = await this.apiClient.get('/rest/file/upload');
 
       return response.data;
     } catch (error) {
@@ -95,7 +96,8 @@ class DailymotionClient {
    * Upload a video file to Dailymotion
    */
   async uploadFile(filePath, uploadUrl, onProgress) {
-    try {
+      try {
+        console.log('===> uploader.js:99 ~ filePath, uploadUrl', filePath, uploadUrl);
       const fileStream = createReadStream(filePath);
       const fileStats = statSync(filePath);
       const fileSize = fileStats.size;
@@ -540,6 +542,106 @@ export async function getNextEpisodeToUpload() {
        ORDER BY us.scheduled_at ASC, us.id ASC
        LIMIT 1`,
       [now]
+    );
+    
+    return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Test Dailymotion connection and credentials
+ */
+export async function testDailymotionConnection() {
+  try {
+    const client = getDailymotionClient();
+    await client.authenticate();
+    
+    return {
+      success: true,
+      message: 'Dailymotion authentication successful',
+      tokenValid: client.isTokenValid()
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+}
+
+/**
+ * Test upload a single episode (for testing purposes)
+ */
+export async function testUploadEpisode(episodeId, onProgress = null) {
+  const client = await pool.connect();
+  
+  try {
+    // Get episode with series info
+    const result = await client.query(
+      `SELECT 
+        e.*,
+        s.title as series_title,
+        s.intro
+       FROM episodes e
+       JOIN series s ON e.series_id = s.id
+       WHERE e.id = $1`,
+      [episodeId]
+    );
+    
+    if (result.rows.length === 0) {
+      throw new Error('Episode not found');
+    }
+    
+    const episode = result.rows[0];
+    const seriesInfo = {
+      title: episode.series_title,
+      intro: episode.intro
+    };
+    
+    console.log(`[Test Upload] Starting test upload for Episode ${episode.index_sequence}`);
+    
+    // Upload episode
+    const videoId = await uploadEpisode(episode, seriesInfo, onProgress);
+    
+    return {
+      success: true,
+      videoId,
+      episode: {
+        id: episode.id,
+        index: episode.index_sequence,
+        title: episode.title,
+        seriesTitle: episode.series_title
+      },
+      url: `https://www.dailymotion.com/video/${videoId}`
+    };
+  } catch (error) {
+    console.error('[Test Upload] Error:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Get episode info for test upload
+ */
+export async function getEpisodeForTest(seriesId, episodeIndex = 1) {
+  const client = await pool.connect();
+  
+  try {
+    const result = await client.query(
+      `SELECT 
+        e.id,
+        e.title,
+        e.index_sequence,
+        e.path,
+        s.title as series_title
+       FROM episodes e
+       JOIN series s ON e.series_id = s.id
+       WHERE e.series_id = $1 AND e.index_sequence = $2 AND e.path IS NOT NULL`,
+      [seriesId, episodeIndex]
     );
     
     return result.rows[0] || null;

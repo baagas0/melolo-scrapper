@@ -625,6 +625,31 @@ body {
   font-size: 1.1rem;
 }
 
+.test-section {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  border: 2px solid var(--primary);
+}
+
+.test-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.test-buttons .btn {
+  flex: 1;
+  min-width: 200px;
+}
+
+.results-area a {
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.results-area a:hover {
+  opacity: 0.8;
+}
+
 .upload-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));

@@ -204,6 +204,22 @@ function handleWebSocketMessage(message) {
       loadUploadSchedule();
       break;
     
+    case 'test_upload_progress':
+      addLog(`[Test Upload] Progress: ${data.progress}%`, 'info');
+      showProgress('test-upload-result', `Uploading... ${data.progress}%`, data.progress);
+      break;
+    
+    case 'test_upload_complete':
+      addLog(`[Test Upload] ✓ Success! Video ID: ${data.videoId}`, 'success');
+      const url = data.url || `https://www.dailymotion.com/video/${data.videoId}`;
+      showSuccess('test-upload-result', `Upload berhasil!<br>Video ID: ${data.videoId}<br><a href="${url}" target="_blank" style="color: var(--primary);">View on Dailymotion →</a>`);
+      break;
+    
+    case 'test_upload_error':
+      addLog(`[Test Upload] ✗ Failed: ${data.message}`, 'error');
+      showError('test-upload-result', `Upload failed: ${data.message}`);
+      break;
+    
     default:
       console.log('Unknown message type:', type);
   }
@@ -444,6 +460,99 @@ function initForms() {
   // Refresh upload schedule
   document.getElementById('refresh-schedule').addEventListener('click', () => {
     loadUploadSchedule();
+  });
+
+  // Test connection button
+  document.getElementById('test-connection-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('test-connection-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Testing...';
+    
+    showProgress('test-connection-result', 'Testing Dailymotion connection...');
+    
+    try {
+      const response = await fetch(`${API_URL}/api/upload/test/connection`);
+      const result = await response.json();
+      
+      if (result.success) {
+        showSuccess('test-connection-result', `✓ ${result.message}<br>Token valid: ${result.tokenValid ? 'Yes' : 'No'}`);
+        addLog('Dailymotion connection test successful', 'success');
+      } else {
+        showError('test-connection-result', `✗ ${result.message}`);
+        addLog(`Dailymotion connection test failed: ${result.message}`, 'error');
+      }
+    } catch (error) {
+      console.error('Test connection error:', error);
+      showError('test-connection-result', `Error: ${error.message}`);
+      addLog(`Test connection error: ${error.message}`, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔌 Test Connection';
+    }
+  });
+
+  // Test upload button
+  document.getElementById('test-upload-btn').addEventListener('click', () => {
+    document.getElementById('test-upload-form-container').style.display = 'block';
+    document.getElementById('test-upload-result').innerHTML = '';
+  });
+
+  // Cancel test button
+  document.getElementById('cancel-test-btn').addEventListener('click', () => {
+    document.getElementById('test-upload-form-container').style.display = 'none';
+    document.getElementById('test-upload-form').reset();
+    document.getElementById('test-upload-result').innerHTML = '';
+  });
+
+  // Test upload form
+  document.getElementById('test-upload-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const seriesId = document.getElementById('test-series-id').value;
+    const episodeIndex = document.getElementById('test-episode-index').value;
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = '⏳ Starting...';
+    
+    showProgress('test-upload-result', 'Getting episode info...');
+    
+    try {
+      // Get episode info first
+      const infoResponse = await fetch(`${API_URL}/api/upload/test/episode-info?seriesId=${seriesId}&episodeIndex=${episodeIndex}`);
+      const infoResult = await infoResponse.json();
+      
+      if (!infoResult.success) {
+        throw new Error(infoResult.message);
+      }
+      
+      const episode = infoResult.episode;
+      showInfo('test-upload-result', `Found: ${episode.series_title} - Episode ${episode.index_sequence}<br>Starting upload...`);
+      
+      // Start upload
+      const uploadResponse = await fetch(`${API_URL}/api/upload/test/episode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ episodeId: episode.id })
+      });
+      
+      const uploadResult = await uploadResponse.json();
+      
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.message);
+      }
+      
+      showProgress('test-upload-result', 'Upload started. Watch progress in logs...');
+      addLog(`Test upload started for Episode ${episode.index_sequence}`, 'info');
+      
+    } catch (error) {
+      console.error('Test upload error:', error);
+      showError('test-upload-result', error.message);
+      addLog(`Test upload error: ${error.message}`, 'error');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Upload Episode';
+    }
   });
 }
 
