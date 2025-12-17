@@ -49,7 +49,7 @@ function getCommonParams() {
     update_version_code: '50819',
     _rticket: rticket.toString(),
     current_region: 'US',
-    app_language: 'en',
+    app_language: 'id', // Changed from 'en' to 'id'
     sys_language: 'en',
     app_region: 'US',
     sys_region: 'US',
@@ -179,6 +179,102 @@ export async function getMultipleVideoStreams(videoIds) {
     return response.data;
   } catch (error) {
     console.error(`Error fetching multiple video streams:`, error.message);
+    throw error;
+  }
+}
+
+/**
+ * Search books/series from bookmall
+ * @param {Object} options - Search options
+ * @param {string} options.tagId - Tag ID for filtering (default: 25)
+ * @param {string} options.tagType - Tag type (default: 2)
+ * @param {number} options.offset - Pagination offset (default: 0)
+ * @param {number} options.limit - Results per page (default: 20)
+ * @param {string} options.cellId - Cell ID (default: 7450059162446200848)
+ * @returns {Promise<Object>} Search results with books
+ */
+export async function searchBooks(options = {}) {
+  const {
+    tagId = '25',
+    tagType = '2',
+    offset = 0,
+    limit = 20,
+    cellId = '7450059162446200848'
+  } = options;
+
+  const url = `${BASE_URL}/i18n_novel/bookmall/cell/change/v1/`;
+  
+  // Build params in exact order from working curl
+  const commonParams = getCommonParams();
+  const params = {
+    max_abstract_len: 0,
+    selected_tag_id: tagId,
+    selected_tag_type: tagType,
+    offset: offset,
+    is_preload: false,
+    recommend_enable_write_client_session_cache_only: false,
+    preference_strategy: 0,
+    session_id: `202512101501045C6A9FEBAF21FC38E71A`,
+    change_type: 0,
+    enable_new_show_mechanism: false,
+    time_zone: 'Asia/Jakarta',
+    is_preference_force_insert: false,
+    is_landing_page: 0,
+    tab_scene: 3,
+    tab_type: 0,
+    limit: limit,
+    start_offset: 0,
+    cell_id: cellId,
+    os: 'android',
+    _rticket: commonParams._rticket,
+    current_region: 'US',
+    app_language: 'id', // Changed from 'en' to 'id'
+    sys_language: 'en',
+    app_region: 'US',
+    sys_region: 'US',
+    user_language: 'id',
+    ui_language: 'en'
+  };
+
+  const headers = updateTimestampHeaders(DEFAULT_HEADERS);
+  
+  try {
+    const response = await axios.get(url, {
+      params,
+      headers,
+      timeout: 30000
+    });
+    console.log('===> client.js:231 ~ response', response);
+    return response.data;
+  } catch (error) {
+    console.error(`Error searching books:`, error.message);
+    throw error;
+  }
+}
+
+/**
+ * Get book detail by book ID
+ * @param {string} bookId - Book ID
+ * @returns {Promise<Object>} Book detail
+ */
+export async function getBookDetail(bookId) {
+  const url = `${BASE_URL}/i18n_novel/book_detail/v1/`;
+  const params = {
+    ...getCommonParams(),
+    book_id: bookId
+  };
+
+  const headers = updateTimestampHeaders(DEFAULT_HEADERS);
+  
+  try {
+    const response = await axios.get(url, {
+      params,
+      headers,
+      timeout: 30000
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching book detail for ${bookId}:`, error.message);
     throw error;
   }
 }

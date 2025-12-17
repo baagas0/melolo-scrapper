@@ -42,7 +42,7 @@ async function migrate() {
     `);
     console.log('✓ Episodes table created');
 
-    // Create indexes
+    // Create indexes for episodes
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_episodes_series_id ON episodes(series_id)
     `);
@@ -52,7 +52,45 @@ async function migrate() {
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_episodes_path ON episodes(path)
     `);
-    console.log('✓ Indexes created');
+    console.log('✓ Episodes indexes created');
+
+    // Create books table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS books (
+        id SERIAL PRIMARY KEY,
+        book_id TEXT UNIQUE NOT NULL,
+        book_name TEXT NOT NULL,
+        author TEXT,
+        abstract TEXT,
+        thumb_url TEXT,
+        age_gate TEXT,
+        book_status TEXT,
+        book_type TEXT,
+        category_ids TEXT,
+        serial_count INTEGER DEFAULT 0,
+        word_number TEXT,
+        language TEXT,
+        is_exclusive TEXT,
+        creation_status TEXT,
+        last_chapter_index TEXT,
+        scraped BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✓ Books table created');
+
+    // Create indexes for books
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_books_book_id ON books(book_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_books_scraped ON books(scraped)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_books_language ON books(language)
+    `);
+    console.log('✓ Books indexes created');
 
     console.log('\nDatabase migration completed successfully!');
   } catch (error) {

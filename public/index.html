@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Melolo Scraper - Web Interface</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <h1>🎬 Melolo Scraper</h1>
+      <p class="subtitle">Web Interface for Video Scraping & Download</p>
+      <div class="status-bar">
+        <span id="connection-status" class="status-badge status-connecting">Connecting...</span>
+        <span id="db-status" class="status-badge status-unknown">Database: Unknown</span>
+      </div>
+    </header>
+
+    <!-- Stats Dashboard -->
+    <section class="stats-section">
+      <h2>📊 Statistics</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-books">0</div>
+          <div class="stat-label">Total Books</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-scraped">0</div>
+          <div class="stat-label">Scraped Books</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-series">0</div>
+          <div class="stat-label">Series</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-episodes">0</div>
+          <div class="stat-label">Episodes</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-button active" data-tab="search">🔍 Search</button>
+      <button class="tab-button" data-tab="books">📚 Books</button>
+      <button class="tab-button" data-tab="scrape">⚙️ Scrape</button>
+      <button class="tab-button" data-tab="batch">🚀 Batch</button>
+      <button class="tab-button" data-tab="logs">📝 Logs</button>
+    </div>
+
+    <!-- Tab Contents -->
+    <div class="tab-content active" id="tab-search">
+      <h2>🔍 Search Books</h2>
+      <form id="search-form" class="form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="search-tag-id">Tag ID</label>
+            <input type="text" id="search-tag-id" value="25" placeholder="25">
+            <small>25=One Night Stand, 754=CEO, 721=Counterattack</small>
+          </div>
+          <div class="form-group">
+            <label for="search-tag-type">Tag Type</label>
+            <input type="text" id="search-tag-type" value="2" placeholder="2">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="search-limit">Limit per Page</label>
+            <input type="number" id="search-limit" value="20" min="1" max="100">
+          </div>
+          <div class="form-group">
+            <label for="search-max-pages">Max Pages</label>
+            <input type="number" id="search-max-pages" value="3" min="1" max="20">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="search-cell-id">Cell ID</label>
+          <input type="text" id="search-cell-id" value="7450059162446200848" placeholder="7450059162446200848">
+          <small>Default cell ID dari Melolo API</small>
+        </div>
+        <button type="submit" class="btn btn-primary">Search & Save to Database</button>
+      </form>
+      <div id="search-results" class="results-area"></div>
+    </div>
+
+    <div class="tab-content" id="tab-books">
+      <h2>📚 Books Library</h2>
+      <div class="toolbar">
+        <div class="filter-group">
+          <label>
+            <input type="checkbox" id="filter-scraped-only"> Show scraped only
+          </label>
+        </div>
+        <button class="btn btn-secondary" id="refresh-books">🔄 Refresh</button>
+      </div>
+      <div id="books-list" class="books-grid">
+        <p class="loading">Loading books...</p>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-scrape">
+      <h2>⚙️ Scrape Series</h2>
+      <form id="scrape-form" class="form">
+        <div class="form-group">
+          <label for="scrape-series-id">Series ID / Book ID</label>
+          <input type="text" id="scrape-series-id" placeholder="7498275267933113345" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="scrape-download" checked> Download videos
+            </label>
+          </div>
+          <div class="form-group">
+            <label for="scrape-concurrency">Concurrency</label>
+            <input type="number" id="scrape-concurrency" value="2" min="1" max="10">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="scrape-output-dir">Output Directory</label>
+          <input type="text" id="scrape-output-dir" value="./video" placeholder="./video">
+        </div>
+        <button type="submit" class="btn btn-primary">Start Scraping</button>
+      </form>
+      <div id="scrape-progress" class="progress-area"></div>
+    </div>
+
+    <div class="tab-content" id="tab-batch">
+      <h2>🚀 Batch Scrape</h2>
+      <p class="info-text">Automatically scrape multiple unscraped books from your library.</p>
+      <form id="batch-form" class="form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="batch-limit">Number of Books</label>
+            <input type="number" id="batch-limit" value="5" min="1" max="50">
+          </div>
+          <div class="form-group">
+            <label for="batch-concurrency">Concurrency</label>
+            <input type="number" id="batch-concurrency" value="1" min="1" max="10">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="batch-download" checked> Download videos
+            </label>
+          </div>
+          <div class="form-group">
+            <label for="batch-output-dir">Output Directory</label>
+            <input type="text" id="batch-output-dir" value="./video" placeholder="./video">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-large">Start Batch Scraping</button>
+      </form>
+      <div id="batch-progress" class="progress-area"></div>
+    </div>
+
+    <div class="tab-content" id="tab-logs">
+      <h2>📝 Real-time Logs</h2>
+      <div class="toolbar">
+        <button class="btn btn-secondary" id="clear-logs">🗑️ Clear Logs</button>
+      </div>
+      <div id="logs-container" class="logs-container">
+        <p class="log-entry log-info">Waiting for events...</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+

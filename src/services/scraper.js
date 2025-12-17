@@ -103,7 +103,7 @@ export async function scrapeSeries(seriesId) {
     console.log('===> scraper.js:100 ~ seriesInfo', seriesInfo);
     
     // Save series to database
-    const dbSeriesId = saveSeries({
+    const dbSeriesId = await saveSeries({
       series_id: seriesId,
       cover_url: seriesInfo.series_cover,
       intro: seriesInfo.series_intro || '',
@@ -111,7 +111,7 @@ export async function scrapeSeries(seriesId) {
       episode_count: seriesInfo.episode_cnt || 0
     });
 
-    console.log(`Series saved: ${seriesInfo.title || seriesId}`);
+    console.log(`Series saved: ${seriesInfo.series_title || seriesId}`);
 
     // Extract episodes (adjust based on actual API response structure)
     const episodes = seriesInfo.video_list || [];

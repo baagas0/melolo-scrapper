@@ -1,0 +1,462 @@
+import express from 'express';
+import cors from 'cors';
+import { WebSocketServer } from 'ws';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { 
+  searchAndSaveBooks, 
+  getBooks, 
+  getUnscrapedBooks,
+  markBookAsScraped,
+  deleteBook 
+} from './services/books.js';
+import { scrapeSeries, getEpisodesToDownload } from './services/scraper.js';
+import { downloadSeriesEpisodes } from './services/downloader.js';
+import pool from './db/database.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.static(join(__dirname, '../public')));
+
+// Store active WebSocket connections
+const wsClients = new Set();
+
+// API Routes
+
+/**
+ * GET /api/health
+ * Health check endpoint
+ */
+app.get('/api/health', async (req, res) => {
+  try {
+    // Test database connection
+    const client = await pool.connect();
+    await client.query('SELECT 1');
+    client.release();
+    
+    res.json({ 
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      database: 'connected'
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'error',
+      message: error.message 
+    });
+  }
+});
+
+/**
+ * POST /api/search
+ * Search books and save to database
+ */
+app.post('/api/search', async (req, res) => {
+  try {
+    const { tagId, tagType, limit, maxPages, cellId } = req.body;
+    console.log('===> server.js:64 ~ { tagId, tagType, limit, maxPages, cellId }', { tagId, tagType, limit, maxPages, cellId });
+    
+    broadcastMessage({
+      type: 'search_start',
+      data: { tagId, tagType, limit, maxPages }
+    });
+
+    const result = await searchAndSaveBooks({
+      tagId,
+      tagType,
+      limit: limit || 20,
+      maxPages: maxPages || 1,
+      cellId: cellId || '7450059162446200848'
+    });
+
+    broadcastMessage({
+      type: 'search_complete',
+      data: result
+    });
+
+    res.json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    console.error('Search error:', error);
+    broadcastMessage({
+      type: 'search_error',
+      data: { message: error.message }
+    });
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+/**
+ * GET /api/books
+ * Get all books from database
+ */
+app.get('/api/books', async (req, res) => {
+  try {
+    const { scrapedOnly, limit } = req.query;
+    
+    const books = await getBooks({
+      scrapedOnly: scrapedOnly === 'true',
+      limit: parseInt(limit) || 100
+    });
+
+    res.json({
+      success: true,
+      total: books.length,
+      books
+    });
+  } catch (error) {
+    console.error('Get books error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+/**
+ * GET /api/books/unscraped
+ * Get unscraped books
+ */
+app.get('/api/books/unscraped', async (req, res) => {
+  try {
+    const { limit } = req.query;
+    
+    const books = await getUnscrapedBooks(parseInt(limit) || 10);
+
+    res.json({
+      success: true,
+      total: books.length,
+      books
+    });
+  } catch (error) {
+    console.error('Get unscraped books error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+/**
+ * POST /api/scrape
+ * Scrape a specific series
+ */
+app.post('/api/scrape', async (req, res) => {
+  try {
+    const { seriesId, download, outputDir, concurrency } = req.body;
+
+    if (!seriesId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Series ID is required'
+      });
+    }
+
+    broadcastMessage({
+      type: 'scrape_start',
+      data: { seriesId }
+    });
+
+    // Scrape series
+    const scrapedData = await scrapeSeries(seriesId);
+    
+    broadcastMessage({
+      type: 'scrape_metadata_complete',
+      data: {
+        seriesId,
+        title: scrapedData.title,
+        episodesCount: scrapedData.episodes.length
+      }
+    });
+
+    let downloadedPaths = [];
+    if (download !== false) {
+      broadcastMessage({
+        type: 'download_start',
+        data: { episodesCount: scrapedData.episodes.length }
+      });
+
+      downloadedPaths = await downloadSeriesEpisodes(
+        scrapedData.seriesId,
+        outputDir || './video',
+        concurrency || 1
+      );
+
+      broadcastMessage({
+        type: 'download_complete',
+        data: { count: downloadedPaths.length }
+      });
+    }
+
+    // Mark book as scraped if exists
+    try {
+      await markBookAsScraped(seriesId);
+    } catch (err) {
+      console.log('Book not in database, skipping mark as scraped');
+    }
+
+    broadcastMessage({
+      type: 'scrape_complete',
+      data: {
+        seriesId,
+        title: scrapedData.title,
+        episodesCount: scrapedData.episodes.length,
+        downloadedCount: downloadedPaths.length
+      }
+    });
+
+    res.json({
+      success: true,
+      series: scrapedData,
+      downloadedCount: downloadedPaths.length
+    });
+  } catch (error) {
+    console.error('Scrape error:', error);
+    broadcastMessage({
+      type: 'scrape_error',
+      data: { message: error.message }
+    });
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+/**
+ * POST /api/batch-scrape
+ * Batch scrape multiple books
+ */
+app.post('/api/batch-scrape', async (req, res) => {
+  try {
+    const { limit, download, outputDir, concurrency } = req.body;
+
+    const unscrapedBooks = await getUnscrapedBooks(limit || 5);
+
+    if (unscrapedBooks.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No unscraped books found',
+        processed: 0
+      });
+    }
+
+    broadcastMessage({
+      type: 'batch_start',
+      data: { total: unscrapedBooks.length }
+    });
+
+    // Start batch process (don't await - run in background)
+    processBatchScrape(unscrapedBooks, {
+      download: download !== false,
+      outputDir: outputDir || './video',
+      concurrency: concurrency || 1
+    });
+
+    res.json({
+      success: true,
+      message: 'Batch scraping started',
+      total: unscrapedBooks.length
+    });
+  } catch (error) {
+    console.error('Batch scrape error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+/**
+ * DELETE /api/books/:bookId
+ * Delete a book
+ */
+app.delete('/api/books/:bookId', async (req, res) => {
+  try {
+    const { bookId } = req.params;
+    
+    await deleteBook(bookId);
+
+    res.json({
+      success: true,
+      message: 'Book deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete book error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+/**
+ * GET /api/stats
+ * Get statistics
+ */
+app.get('/api/stats', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    
+    const [booksResult, scrapedResult, seriesResult, episodesResult] = await Promise.all([
+      client.query('SELECT COUNT(*) as count FROM books'),
+      client.query('SELECT COUNT(*) as count FROM books WHERE scraped = true'),
+      client.query('SELECT COUNT(*) as count FROM series'),
+      client.query('SELECT COUNT(*) as count FROM episodes')
+    ]);
+    
+    client.release();
+
+    res.json({
+      success: true,
+      stats: {
+        totalBooks: parseInt(booksResult.rows[0].count),
+        scrapedBooks: parseInt(scrapedResult.rows[0].count),
+        totalSeries: parseInt(seriesResult.rows[0].count),
+        totalEpisodes: parseInt(episodesResult.rows[0].count)
+      }
+    });
+  } catch (error) {
+    console.error('Stats error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+// Helper functions
+
+async function processBatchScrape(books, options) {
+  const { download, outputDir, concurrency } = options;
+  let processed = 0;
+  let failed = 0;
+
+  for (const book of books) {
+    try {
+      broadcastMessage({
+        type: 'batch_progress',
+        data: {
+          current: processed + 1,
+          total: books.length,
+          bookName: book.book_name,
+          bookId: book.book_id
+        }
+      });
+
+      const scrapedData = await scrapeSeries(book.book_id);
+      
+      if (download) {
+        await downloadSeriesEpisodes(
+          scrapedData.seriesId,
+          outputDir,
+          concurrency
+        );
+      }
+
+      await markBookAsScraped(book.book_id);
+      processed++;
+
+      broadcastMessage({
+        type: 'batch_item_complete',
+        data: {
+          bookId: book.book_id,
+          bookName: book.book_name,
+          success: true
+        }
+      });
+
+    } catch (error) {
+      console.error(`Failed to scrape ${book.book_name}:`, error.message);
+      failed++;
+
+      broadcastMessage({
+        type: 'batch_item_error',
+        data: {
+          bookId: book.book_id,
+          bookName: book.book_name,
+          error: error.message
+        }
+      });
+    }
+
+    // Delay between books
+    if (processed + failed < books.length) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+
+  broadcastMessage({
+    type: 'batch_complete',
+    data: {
+      total: books.length,
+      processed,
+      failed
+    }
+  });
+}
+
+function broadcastMessage(message) {
+  const data = JSON.stringify(message);
+  wsClients.forEach(client => {
+    if (client.readyState === 1) { // WebSocket.OPEN
+      client.send(data);
+    }
+  });
+}
+
+// Start server
+const server = app.listen(PORT, () => {
+  console.log('='.repeat(60));
+  console.log('Melolo Scraper Web Interface');
+  console.log('='.repeat(60));
+  console.log(`Server running at: http://localhost:${PORT}`);
+  console.log(`WebSocket server ready`);
+  console.log('='.repeat(60));
+});
+
+// WebSocket server
+const wss = new WebSocketServer({ server });
+
+wss.on('connection', (ws) => {
+  console.log('New WebSocket client connected');
+  wsClients.add(ws);
+
+  ws.on('close', () => {
+    console.log('WebSocket client disconnected');
+    wsClients.delete(ws);
+  });
+
+  ws.on('error', (error) => {
+    console.error('WebSocket error:', error);
+    wsClients.delete(ws);
+  });
+
+  // Send initial connection message
+  ws.send(JSON.stringify({
+    type: 'connected',
+    data: { message: 'Connected to Melolo Scraper' }
+  }));
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, closing server...');
+  server.close(() => {
+    console.log('Server closed');
+    pool.end();
+  });
+});
+
