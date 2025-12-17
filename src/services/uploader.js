@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { createReadStream, statSync, existsSync } from 'fs';
+import FormData from 'form-data';
 import pool from '../db/database.js';
 
 /**
@@ -96,16 +97,21 @@ class DailymotionClient {
    * Upload a video file to Dailymotion
    */
   async uploadFile(filePath, uploadUrl, onProgress) {
-      try {
-        console.log('===> uploader.js:99 ~ filePath, uploadUrl', filePath, uploadUrl);
-      const fileStream = createReadStream(filePath);
+    try {
+      console.log('[Dailymotion] Uploading file:', filePath);
+      console.log('[Dailymotion] Upload URL:', uploadUrl);
+      
       const fileStats = statSync(filePath);
       const fileSize = fileStats.size;
+      console.log('[Dailymotion] File size:', (fileSize / 1024 / 1024).toFixed(2), 'MB');
 
-      const uploadResponse = await axios.post(uploadUrl, fileStream, {
+      // Create form data with file field as required by Dailymotion
+      const formData = new FormData();
+      formData.append('file', createReadStream(filePath));
+
+      const uploadResponse = await axios.post(uploadUrl, formData, {
         headers: {
-          'Content-Type': 'application/octet-stream',
-          'Content-Length': fileSize,
+          ...formData.getHeaders(),
         },
         maxBodyLength: Infinity,
         maxContentLength: Infinity,
@@ -117,22 +123,27 @@ class DailymotionClient {
         },
       });
 
-      return uploadResponse.data.upload_token || uploadResponse.data.url;
+      console.log('[Dailymotion] Upload response:', uploadResponse.data);
+      
+      // Return upload_url from response (this is used as upload token)
+      return uploadResponse.data.upload_url || uploadResponse.data.url;
     } catch (error) {
-      console.error('[Dailymotion] File upload failed:', error.message);
-      throw new Error('Failed to upload file to Dailymotion');
+      console.error('[Dailymotion] File upload failed:', error.response?.data || error.message);
+      throw new Error(`Failed to upload file to Dailymotion: ${error.response?.data?.error || error.message}`);
     }
   }
 
   /**
    * Publish a video with metadata
    */
-  async publishVideo(uploadToken, title, description) {
+  async publishVideo(uploadUrl, title, description) {
     try {
       await this.ensureValidToken();
 
-      const response = await this.apiClient.post('/video/create', {
-        upload_token: uploadToken,
+      console.log('[Dailymotion] Publishing video with URL:', uploadUrl);
+      
+      const response = await this.apiClient.post('/rest/video/create', {
+        url: uploadUrl,
         title,
         description: description || '',
         published: true,
@@ -141,8 +152,8 @@ class DailymotionClient {
       console.log(`[Dailymotion] Video published successfully: ${response.data.id}`);
       return response.data;
     } catch (error) {
-      console.error('[Dailymotion] Video publish failed:', error.message);
-      throw new Error('Failed to publish video to Dailymotion');
+      console.error('[Dailymotion] Video publish failed:', error.response?.data || error.message);
+      throw new Error(`Failed to publish video to Dailymotion: ${error.response?.data?.error || error.message}`);
     }
   }
 
@@ -153,14 +164,17 @@ class DailymotionClient {
     try {
       console.log(`[Dailymotion] Starting upload: ${title}`);
       
-      // Get upload URL
+      // Step 1: Get upload URL
       const uploadUrlData = await this.getUploadUrl();
+      console.log('[Dailymotion] Received upload URL');
 
-      // Upload file
-      const uploadToken = await this.uploadFile(filePath, uploadUrlData.upload_url, onProgress);
+      // Step 2: Upload file to the provided URL
+      const uploadedUrl = await this.uploadFile(filePath, uploadUrlData.upload_url, onProgress);
+      console.log('[Dailymotion] File uploaded, URL:', uploadedUrl);
 
-      // Publish video
-      const publishResponse = await this.publishVideo(uploadToken, title, description);
+      // Step 3: Publish video with the uploaded URL
+      const publishResponse = await this.publishVideo(uploadedUrl, title, description);
+      console.log('[Dailymotion] Video published with ID:', publishResponse.id);
 
       return publishResponse.id;
     } catch (error) {
