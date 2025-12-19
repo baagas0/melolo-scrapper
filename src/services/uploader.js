@@ -2,19 +2,23 @@ import axios from "axios";
 import { createReadStream, statSync, existsSync } from "fs";
 import FormData from "form-data";
 import pool from "../db/database.js";
+import qs from "qs";
 
 /**
  * Dailymotion API client for handling authentication and video uploads
  */
 class DailymotionClient {
-  constructor(apiKey, apiSecret) {
+  constructor(apiKey, apiSecret, username_account, username_studio, password) {
     this.apiKey = apiKey;
     this.apiSecret = apiSecret;
+    this.username_account = username_account;
+    this.username_studio = username_studio;
+    this.password = password;
     this.accessToken = null;
     this.tokenExpiry = null;
 
     this.apiClient = axios.create({
-      baseURL: "https://partner.api.dailymotion.com",
+      baseURL: "https://api.dailymotion.com",
       timeout: 300000, // 5 minutes for upload
     });
 
@@ -32,27 +36,22 @@ class DailymotionClient {
    * Authenticate with Dailymotion API using client credentials flow
    */
   async authenticate() {
+    console.log("=".repeat(15));
+    console.log("[START] AUTHENTICATE LOGIN");
+    console.log("=".repeat(15));
+    let dataError;
     try {
-      //   const params = new URLSearchParams();
-      //   params.append('grant_type', 'client_credentials');
-      //   params.append('client_id', this.apiKey);
-      //   params.append('client_secret', this.apiSecret);
-      //   params.append('scope', 'manage_videos');
-      // const params = {
-      //   grant_type: "client_credentials",
-      //   client_id: this.apiKey,
-      //   client_secret: this.apiSecret,
-      //   scope: "manage_videos",
-      // };
-			const formData = new FormData();
-			formData.append('grant_type', 'client_credentials');
-			formData.append('client_id', this.apiKey);
-			formData.append('client_secret', this.apiSecret);
-			formData.append('scopes', 'manage_videos manage_players manage_playlists manage_subtitles email userinfo');
-			formData.append('Content-Type', 'application/x-www-form-urlencoded');
+      const formData = new FormData();
+      formData.append("grant_type", "password");
+      formData.append("client_id", this.apiKey);
+      formData.append("client_secret", this.apiSecret);
+      formData.append("username", this.username_account);
+      formData.append("password", this.password);
+      formData.append("scopes", "manage_videos manage_players manage_playlists manage_subtitles email userinfo");
+      formData.append("Content-Type", "application/x-www-form-urlencoded");
 
-      const response = await axios.post(
-        "https://partner.api.dailymotion.com/oauth/v1/token",
+      const response = await this.apiClient.post(
+        "/oauth/token",
         formData
         // {
         //   headers: {
@@ -61,6 +60,7 @@ class DailymotionClient {
         // }
       );
 
+      console.log("response.data", response.data);
       this.accessToken = response.data.access_token;
       // Set expiry to 5 minutes before actual expiry for safety margin
       const expiresIn = response.data.expires_in || 3600;
@@ -69,8 +69,13 @@ class DailymotionClient {
       console.log("[Dailymotion] Authentication successful");
     } catch (error) {
       console.error("[Dailymotion] Authentication failed:", error.message);
-      throw new Error("Failed to authenticate with Dailymotion API");
+      console.log(error);
+      dataError = error;
     }
+    console.log("=".repeat(15));
+    console.log("[END] AUTHENTICATE LOGIN");
+    console.log("=".repeat(15));
+    if (dataError) throw new Error(`Failed to authenticate with Dailymotion API: ${dataError.response?.data?.error || dataError.message}`);
   }
 
   /**
@@ -93,23 +98,39 @@ class DailymotionClient {
    * Get upload URL for a video file
    */
   async getUploadUrl() {
+    console.log("=".repeat(15));
+    console.log("[START] GET URL UPLOAD");
+    console.log("=".repeat(15));
+    let dataError;
     try {
       await this.ensureValidToken();
 
-      const response = await this.apiClient.get("/rest/file/upload");
+      const response = await this.apiClient.get("/file/upload", {
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+        },
+      });
 
       return response.data;
     } catch (error) {
-      console.error("[Dailymotion] Failed to get upload URL:", error.message);
       console.error(error);
-      throw new Error("Failed to get upload URL from Dailymotion");
+      console.error("[Dailymotion] Failed to get upload URL:", error.message);
+      dataError = error;
     }
+    console.log("=".repeat(15));
+    console.log("[END] GET URL UPLOAD");
+    console.log("=".repeat(15));
+    if (dataError) throw new Error(`Failed to get upload URL from Dailymotion: ${dataError.response?.data?.error || dataError.message}`);
   }
 
   /**
    * Upload a video file to Dailymotion
    */
   async uploadFile(filePath, uploadUrl, onProgress) {
+    console.log("=".repeat(15));
+    console.log("[START] UPLOAD FILE");
+    console.log("=".repeat(15));
+    let dataError;
     try {
       console.log("[Dailymotion] Uploading file:", filePath);
       console.log("[Dailymotion] Upload URL:", uploadUrl);
@@ -141,36 +162,59 @@ class DailymotionClient {
       // Return upload_url from response (this is used as upload token)
       return uploadResponse.data.upload_url || uploadResponse.data.url;
     } catch (error) {
+      console.log(error);
       console.error("[Dailymotion] File upload failed:", error.response?.data || error.message);
-      throw new Error(`Failed to upload file to Dailymotion: ${error.response?.data?.error || error.message}`);
+      dataError = error;
     }
+    console.log("=".repeat(15));
+    console.log("[END] UPLOAD FILE");
+    console.log("=".repeat(15));
+    if (dataError) throw new Error(`Failed to upload file to Dailymotion: ${dataError.response?.data?.error || dataError.message}`);
   }
 
   /**
    * Publish a video with metadata
    */
   async publishVideo(uploadUrl, title, description) {
+    console.log("=".repeat(15));
+    console.log("[START] PUBLISH VIDEO");
+    console.log("=".repeat(15));
+    let dataError;
     try {
       await this.ensureValidToken();
 
       console.log("[Dailymotion] Publishing video with URL:", uploadUrl);
 
-      const response = await this.apiClient.post("/rest/user/x45xa68/videos", {
-        url: uploadUrl,
+      const data = qs.stringify({
+        channel: "shortfilms",
         title,
-        description: description || "",
-        published: true,
-				channel: 'shortfilms',
-				is_created_for_kids: false,
-				hashtags: "#fyp"
+        is_created_for_kids: false,
+        geoblocking: "allow",
+        description,
+        url: uploadUrl,
+        // allow_embed: true,
+        // allowed_in_playlists: true,
+        // country: "id",
+        // hashtags: "#fyp",
+      });
+
+      const response = await this.apiClient.post(`/user/${this.username_studio}/videos`, data, {
+        maxBodyLength: Infinity,
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+        },
       });
 
       console.log(`[Dailymotion] Video published successfully: ${response.data.id}`);
       return response.data;
     } catch (error) {
       console.error("[Dailymotion] Video publish failed:", error.response?.data || error.message);
-      throw new Error(`Failed to publish video to Dailymotion: ${error.response?.data?.error || error.message}`);
+      dataError = error;
     }
+    console.log("=".repeat(15));
+    console.log("[END] PUBLISH VIDEO");
+    console.log("=".repeat(15));
+    if (dataError) throw new Error(`Failed to publish video to Dailymotion: ${dataError.response?.data?.error || dataError.message}`);
   }
 
   /**
@@ -191,7 +235,7 @@ class DailymotionClient {
       // Step 3: Publish video with the uploaded URL
       const publishResponse = await this.publishVideo(uploadedUrl, title, description);
       console.log("[Dailymotion] Video published with ID:", publishResponse.id);
-
+      console.log("publishResponse", publishResponse);
       return publishResponse.id;
     } catch (error) {
       console.error("[Dailymotion] Upload and publish failed:", error.message);
@@ -210,12 +254,15 @@ function getDailymotionClient() {
   if (!dailymotionClient) {
     const apiKey = process.env.DAILYMOTION_API_KEY;
     const apiSecret = process.env.DAILYMOTION_API_SECRET;
+    const username_account = process.env.DAILYMOTION_USERNAME_ACCOUNT;
+    const username_studio = process.env.DAILYMOTION_USERNAME_STUDIO;
+    const password = process.env.DAILYMOTION_PASSWORD;
 
     if (!apiKey || !apiSecret) {
       throw new Error("DAILYMOTION_API_KEY and DAILYMOTION_API_SECRET environment variables are required");
     }
 
-    dailymotionClient = new DailymotionClient(apiKey, apiSecret);
+    dailymotionClient = new DailymotionClient(apiKey, apiSecret, username_account, username_studio, password);
   }
 
   return dailymotionClient;

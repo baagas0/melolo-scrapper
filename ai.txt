@@ -1,236 +1,37 @@
-import axios, { AxiosInstance } from "axios";
-import { ENV } from "./_core/env";
+Generate access token with password method
+post https://api.dailymotion.com/oauth/token
+grant_type
+string
+required
+Defaults to password
 
-interface DailymotionTokenResponse {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-  scope: string;
-}
+set to password to specify the grant type flow
+client_id
+string
+required
 
-interface DailymotionUploadResponse {
-  upload_token: string;
-  upload_url: string;
-}
+The API key retrieved from your Dailymotion Studio.
+client_secret
+string
+required
 
-interface DailymotionPublishResponse {
-  id: string;
-  title: string;
-  status: string;
-}
+The API secret retrieved from your Dailymotion Studio.
+username
+string
+required
 
-/**
- * Dailymotion API client for handling authentication and video uploads
- */
-export class DailymotionClient {
-  private apiClient: AxiosInstance;
-  private accessToken: string | null = null;
-  private tokenExpiry: number | null = null;
-  private apiKey: string;
-  private apiSecret: string;
+the username of the Dailymotion channel you want to access
+password
+string
+required
 
-  constructor(apiKey: string, apiSecret: string) {
-    this.apiKey = apiKey;
-    this.apiSecret = apiSecret;
+the password of the Dailymotion channel you want to access
+scope
+string
+required
+Defaults to manage_videos
 
-    this.apiClient = axios.create({
-      baseURL: "https://partner.api.dailymotion.com",
-      timeout: 30000,
-    });
+needs to be defined for specific permissions or access rights (manage_videos)
 
-    // Add request interceptor to include auth token
-    this.apiClient.interceptors.request.use((config) => {
-      if (this.accessToken) {
-        config.headers.Authorization = `Bearer ${this.accessToken}`;
-      }
-      return config;
-    });
-  }
-
-  /**
-   * Authenticate with Dailymotion API using client credentials flow
-   */
-  async authenticate(): Promise<void> {
-    try {
-      const params = new URLSearchParams();
-      params.append("grant_type", "client_credentials");
-      params.append("client_id", this.apiKey);
-      params.append("client_secret", this.apiSecret);
-      params.append("scope", "manage_videos");
-
-      const response = await axios.post<DailymotionTokenResponse>(
-        "https://partner.api.dailymotion.com/oauth/v1/token",
-        params,
-        {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-        }
-      );
-
-      this.accessToken = response.data.access_token;
-      // Set expiry to 5 minutes before actual expiry for safety margin
-      const expiresIn = response.data.expires_in || 3600;
-      this.tokenExpiry = Date.now() + (expiresIn - 300) * 1000;
-
-      console.log("[Dailymotion] Authentication successful, token expires in", expiresIn, "seconds");
-    } catch (error) {
-      console.error("[Dailymotion] Authentication failed:", error);
-      throw new Error("Failed to authenticate with Dailymotion API");
-    }
-  }
-
-  /**
-   * Check if the current token is still valid
-   */
-  private isTokenValid(): boolean {
-    return this.accessToken !== null && this.tokenExpiry !== null && Date.now() < this.tokenExpiry;
-  }
-
-  /**
-   * Ensure we have a valid token, refresh if needed
-   */
-  private async ensureValidToken(): Promise<void> {
-    if (!this.isTokenValid()) {
-      await this.authenticate();
-    }
-  }
-
-  /**
-   * Get upload URL for a video file
-   */
-  async getUploadUrl(): Promise<DailymotionUploadResponse> {
-    try {
-      await this.ensureValidToken();
-
-      const response = await this.apiClient.get<DailymotionUploadResponse>("/file/upload");
-
-      return response.data;
-    } catch (error) {
-      console.error("[Dailymotion] Failed to get upload URL:", error);
-      throw new Error("Failed to get upload URL from Dailymotion");
-    }
-  }
-
-  /**
-   * Upload a video file to Dailymotion
-   * @param filePath - Path to the video file to upload
-   * @param uploadUrl - The upload URL obtained from getUploadUrl
-   * @param onProgress - Callback for upload progress
-   */
-  async uploadFile(
-    filePath: string,
-    uploadUrl: string,
-    onProgress?: (progress: number) => void
-  ): Promise<string> {
-    try {
-      const fs = await import("fs");
-      const fileStream = fs.createReadStream(filePath);
-      const fileStats = fs.statSync(filePath);
-      const fileSize = fileStats.size;
-
-      const uploadResponse = await axios.post<{ upload_token: string }>(uploadUrl, fileStream, {
-        headers: {
-          "Content-Type": "application/octet-stream",
-          "Content-Length": fileSize,
-        },
-        onUploadProgress: (progressEvent) => {
-          if (onProgress && progressEvent.total) {
-            const progress = Math.round((progressEvent.loaded / progressEvent.total) * 100);
-            onProgress(progress);
-          }
-        },
-      });
-
-      return uploadResponse.data.upload_token;
-    } catch (error) {
-      console.error("[Dailymotion] File upload failed:", error);
-      throw new Error("Failed to upload file to Dailymotion");
-    }
-  }
-
-  /**
-   * Publish a video with metadata
-   * @param uploadToken - Token received from file upload
-   * @param title - Video title
-   * @param description - Video description
-   */
-  async publishVideo(
-    uploadToken: string,
-    title: string,
-    description?: string
-  ): Promise<DailymotionPublishResponse> {
-    try {
-      await this.ensureValidToken();
-
-      const response = await this.apiClient.post<DailymotionPublishResponse>("/video/create", {
-        upload_token: uploadToken,
-        title,
-        description: description || "",
-        published: true,
-      });
-
-      console.log(`[Dailymotion] Video published successfully: ${response.data.id}`);
-      return response.data;
-    } catch (error) {
-      console.error("[Dailymotion] Video publish failed:", error);
-      throw new Error("Failed to publish video to Dailymotion");
-    }
-  }
-
-  /**
-   * Complete video upload and publish
-   */
-  async uploadAndPublishVideo(
-    filePath: string,
-    title: string,
-    description?: string,
-    onProgress?: (progress: number) => void
-  ): Promise<string> {
-    try {
-      // Get upload URL
-      const uploadUrlData = await this.getUploadUrl();
-
-      // Upload file
-      const uploadToken = await this.uploadFile(filePath, uploadUrlData.upload_url, onProgress);
-
-      // Publish video
-      const publishResponse = await this.publishVideo(uploadToken, title, description);
-
-      return publishResponse.id;
-    } catch (error) {
-      console.error("[Dailymotion] Upload and publish failed:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Reset the client instance (useful for testing)
-   */
-  static reset(): void {
-    dailymotionClient = null;
-  }
-}
-
-/**
- * Singleton instance
- */
-let dailymotionClient: DailymotionClient | null = null;
-
-/**
- * Get or create the Dailymotion client instance
- */
-export function getDailymotionClient(): DailymotionClient {
-  if (!dailymotionClient) {
-    const apiKey = process.env.DAILYMOTION_API_KEY;
-    const apiSecret = process.env.DAILYMOTION_API_SECRET;
-
-    if (!apiKey || !apiSecret) {
-      throw new Error("DAILYMOTION_API_KEY and DAILYMOTION_API_SECRET environment variables are required");
-    }
-
-    dailymotionClient = new DailymotionClient(apiKey, apiSecret);
-  }
-
-  return dailymotionClient;
-}
+Get an upload URL
+get https://api.dailymotion.com/file/upload
