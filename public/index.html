@@ -157,6 +157,26 @@
         <button type="submit" class="btn btn-primary btn-large">Start Batch Scraping</button>
       </form>
       <div id="batch-progress" class="progress-area"></div>
+      
+      <hr style="margin: 30px 0; border: none; border-top: 2px solid var(--border);">
+      
+      <h3>📥 Download All Series</h3>
+      <p class="info-text">Sequentially download all series in the database (one by one).</p>
+      
+      <form id="download-all-form" class="form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="download-all-concurrency">Concurrency (Episodes per Series)</label>
+            <input type="number" id="download-all-concurrency" value="1" min="1" max="10">
+          </div>
+          <div class="form-group">
+            <label for="download-all-output-dir">Output Directory</label>
+            <input type="text" id="download-all-output-dir" value="./video" placeholder="./video">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-warning btn-large">Start Download All Series</button>
+      </form>
+      <div id="download-all-progress" class="progress-area"></div>
     </div>
 
     <div class="tab-content" id="tab-monitor">

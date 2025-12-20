@@ -1,5 +1,5 @@
-import pool from '../db/database.js';
-import { getSeriesDetail, getVideoStream } from '../api/client.js';
+import pool from "../db/database.js";
+import { getSeriesDetail, getVideoStream } from "../api/client.js";
 
 /**
  * Save or update series in database
@@ -8,9 +8,10 @@ import { getSeriesDetail, getVideoStream } from '../api/client.js';
  */
 export async function saveSeries(seriesData) {
   const client = await pool.connect();
-  
+
   try {
-    const result = await client.query(`
+    const result = await client.query(
+      `
       INSERT INTO series (melolo_series_id, cover_url, intro, title, episode_count, updated_at)
       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
       ON CONFLICT(melolo_series_id) DO UPDATE SET
@@ -20,13 +21,9 @@ export async function saveSeries(seriesData) {
         episode_count = EXCLUDED.episode_count,
         updated_at = CURRENT_TIMESTAMP
       RETURNING id
-    `, [
-      seriesData.series_id || seriesData.id,
-      seriesData.cover_url || seriesData.cover,
-      seriesData.intro || seriesData.description || '',
-      seriesData.title || seriesData.name,
-      seriesData.episode_count || 0
-    ]);
+    `,
+      [seriesData.series_id || seriesData.id, seriesData.cover_url || seriesData.cover, seriesData.intro || seriesData.description || "", seriesData.title || seriesData.name, seriesData.episode_count || 0]
+    );
 
     return result.rows[0].id;
   } finally {
@@ -42,20 +39,18 @@ export async function saveSeries(seriesData) {
  */
 export async function saveEpisode(seriesId, episodeData) {
   const client = await pool.connect();
-  
+
   try {
     // Check if episode already exists
-    const checkResult = await client.query(
-      'SELECT id FROM episodes WHERE melolo_vid_id = $1',
-      [episodeData.vid]
-    );
-    
+    const checkResult = await client.query("SELECT id FROM episodes WHERE melolo_vid_id = $1", [episodeData.vid]);
+
     if (checkResult.rows.length > 0) {
       console.log(`Episode ${episodeData.vid} already exists, skipping...`);
       return checkResult.rows[0].id;
     }
 
-    const result = await client.query(`
+    const result = await client.query(
+      `
       INSERT INTO episodes (
         series_id, melolo_vid_id, cover, title, index_sequence, 
         duration, video_height, video_weight, updated_at
@@ -70,16 +65,9 @@ export async function saveEpisode(seriesId, episodeData) {
         video_weight = EXCLUDED.video_weight,
         updated_at = CURRENT_TIMESTAMP
       RETURNING id
-    `, [
-      seriesId,
-      episodeData.vid,
-      episodeData.episode_cover || '',
-      episodeData.title || episodeData.name || '',
-      episodeData.vid_index || 0,
-      episodeData.duration || 0,
-      episodeData.video_height || 1080,
-      episodeData.video_weight || episodeData.video_width || 720
-    ]);
+    `,
+      [seriesId, episodeData.vid, episodeData.episode_cover || "", episodeData.title || episodeData.name || "", episodeData.vid_index || 0, episodeData.duration || 0, episodeData.video_height || 1080, episodeData.video_weight || episodeData.video_width || 720]
+    );
 
     return result.rows[0].id;
   } finally {
@@ -94,21 +82,21 @@ export async function saveEpisode(seriesId, episodeData) {
  */
 export async function scrapeSeries(seriesId) {
   console.log(`Fetching series detail for: ${seriesId}`);
-  
+
   try {
     const detailResponse = await getSeriesDetail(seriesId);
-    
+
     // Extract series info (adjust based on actual API response structure)
     const seriesInfo = detailResponse.data.video_data;
-    console.log('===> scraper.js:100 ~ seriesInfo', seriesInfo);
-    
+    console.log("===> scraper.js:100 ~ seriesInfo", seriesInfo);
+
     // Save series to database
     const dbSeriesId = await saveSeries({
       series_id: seriesId,
       cover_url: seriesInfo.series_cover,
-      intro: seriesInfo.series_intro || '',
-      title: seriesInfo.series_title || '',
-      episode_count: seriesInfo.episode_cnt || 0
+      intro: seriesInfo.series_intro || "",
+      title: seriesInfo.series_title || "",
+      episode_count: seriesInfo.episode_cnt || 0,
     });
 
     console.log(`Series saved: ${seriesInfo.series_title || seriesId}`);
@@ -125,15 +113,15 @@ export async function scrapeSeries(seriesId) {
         const episodeIndex = episode.vid_index || 0;
         const episodeId = await saveEpisode(dbSeriesId, {
           ...episode,
-          index_sequence: episodeIndex
+          index_sequence: episodeIndex,
         });
-        
+
         if (episodeId) {
           savedEpisodes.push({
             id: episodeId,
             melolo_vid_id: episode.video_id || episode.id,
             index_sequence: episodeIndex,
-            title: episode.title || episode.name
+            title: episode.title || episode.name,
           });
         } else {
           console.error(`episodeId not found`);
@@ -147,11 +135,24 @@ export async function scrapeSeries(seriesId) {
       seriesId: dbSeriesId,
       meloloSeriesId: seriesId,
       title: seriesInfo.title || seriesInfo.name,
-      episodes: savedEpisodes
+      episodes: savedEpisodes,
     };
   } catch (error) {
     console.error(`Error scraping series ${seriesId}:`, error.message);
     throw error;
+  }
+}
+
+/**
+ * Get all series from database
+ */
+export async function getAllSeries() {
+  const client = await pool.connect();
+  try {
+    const result = await client.query("SELECT * FROM series ORDER BY title ASC");
+    return result.rows;
+  } finally {
+    client.release();
   }
 }
 
@@ -162,16 +163,19 @@ export async function scrapeSeries(seriesId) {
  */
 export async function getEpisodesToDownload(seriesId) {
   const client = await pool.connect();
-  
+
   try {
-    const result = await client.query(`
+    const result = await client.query(
+      `
       SELECT e.*, s.title as series_title
       FROM episodes e
       JOIN series s ON e.series_id = s.id
       WHERE e.series_id = $1 AND (e.path IS NULL OR e.path = '')
       ORDER BY e.index_sequence ASC
-    `, [seriesId]);
-    
+    `,
+      [seriesId]
+    );
+
     return result.rows;
   } finally {
     client.release();
@@ -186,15 +190,17 @@ export async function getEpisodesToDownload(seriesId) {
  */
 export async function updateEpisodePath(episodeId, path) {
   const client = await pool.connect();
-  
+
   try {
-    await client.query(`
+    await client.query(
+      `
       UPDATE episodes 
       SET path = $1, updated_at = CURRENT_TIMESTAMP 
       WHERE id = $2
-    `, [path, episodeId]);
+    `,
+      [path, episodeId]
+    );
   } finally {
     client.release();
   }
 }
-
