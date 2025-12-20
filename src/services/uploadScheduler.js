@@ -34,7 +34,9 @@ class UploadScheduler {
       this.checkAndUpload();
       // }, 60000); // Every 1 minute
       // 10 minute
-    }, 600000);
+      // }, 600000);
+      // 1 hour
+    }, 3600000);
   }
 
   /**
